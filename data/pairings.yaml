@@ -1,0 +1,218 @@
+# T2 — Two-PET Pairings
+#
+# Schema version: 1.0
+# Cross-references: pets[] values must exist in primitives.yaml as PRIMITIVE.id.
+#                   pair_id values are used as foreign keys in stacks.yaml (base_pair)
+#                   and sectors.yaml (primary_stacks).
+#
+# IMPORTANT: This data is suggestive and indicative. Entries are restricted to
+# combinations with identifiable assurance artefacts and production or near-production
+# use cases. Combinations that are theoretically valid but lack deployed assurance
+# regimes are absent intentionally — see DIAGRAM.md for rationale.
+#
+# confidence levels:
+#   peer_reviewed        = combination documented in peer-reviewed literature with evaluation
+#   deployment_documented = live deployment with published assurance artefacts or case study
+#   practitioner_reported = referenced in grey literature, industry reports, or standards docs
+#   theoretical           = analytically motivated but no substantive deployment evidence yet
+
+schema_version: "1.0"
+last_updated: "2026-05"
+
+pairings:
+
+  - id: P-01
+    pets: [FL, DP]
+    combination_logic: >
+      Distributed training with formal leakage bounds applied to model updates or the
+      final model. DP noise is added during aggregation (DP-SGD) or at release.
+      Secure aggregation often co-deployed as part of the same stack (see S-03).
+    artefacts:
+      - privacy accountant (epsilon, delta across training rounds)
+      - clipping norm and noise multiplier parameters
+      - convergence and utility monitoring logs
+      - DP-SGD configuration manifest
+    advantage: >
+      Formal privacy bound layered onto distributed training. Widely benchmarked
+      (Google Gboard, federated healthcare). Most extensively documented combination
+      in the literature.
+    shortcoming: >
+      Accuracy degradation under tight epsilon; accounting complexity compounds across
+      rounds; utility loss hard to predict ex ante for heterogeneous client distributions.
+    confidence: deployment_documented
+    references:
+      - "Hard et al. (2018) — Google Gboard"
+      - "Sheller et al. (2020) — federated medical imaging"
+      - "Abadi et al. (2016) — DP-SGD"
+
+  - id: P-02
+    pets: [FL, MPC]
+    combination_logic: >
+      Secure aggregation: the coordinator (server) receives only the cryptographically
+      aggregated sum of client updates, not individual contributions. Typically
+      implemented via additive secret sharing. Distinct from full MPC over training —
+      applies MPC specifically at the aggregation step.
+    artefacts:
+      - aggregation protocol specification
+      - adversary model declaration (semi-honest coordinator)
+      - dropout and fault-tolerance handling documentation
+      - communication overhead benchmark
+    advantage: >
+      Removes coordinator visibility of per-client updates while preserving aggregation
+      correctness. Practically deployed at scale (Bonawitz et al. 2017 cross-device FL).
+    shortcoming: >
+      Communication overhead scales with client count; dropout handling adds protocol
+      complexity; does not bound information leakage from the aggregate itself.
+    confidence: deployment_documented
+    references:
+      - "Bonawitz et al. (2017) — practical secure aggregation"
+      - "McMahan et al. (2017)"
+
+  - id: P-03
+    pets: [FL, TEE]
+    combination_logic: >
+      Local data stays on client devices; the aggregation server runs inside a TEE,
+      providing hardware-enforced confidentiality for the aggregation step and any
+      intermediate model state. Attestation confirms the aggregation code has not
+      been tampered with.
+    artefacts:
+      - attestation report confirming enclave identity and measurement
+      - enclave code version manifest
+      - aggregation protocol audit
+      - side-channel mitigation declaration for the aggregation enclave
+    advantage: >
+      Stronger protection for intermediate update state; hardware isolation of the
+      aggregation step reduces need for full cryptographic MPC overhead.
+    shortcoming: >
+      Hardware vendor trust; enclave memory limits can constrain model size; key
+      management overhead; does not provide formal bounds on output disclosure.
+    confidence: deployment_documented
+    references:
+      - "OpenMined / UK AISI / Anthropic pilot (2026)"
+      - "NIST CAISI collaboration (2026)"
+      - "Ryffel et al. (2020)"
+
+  - id: P-04
+    pets: [TEE, DP]
+    combination_logic: >
+      TEE provides hardware-enforced in-use confidentiality for computation on
+      sensitive data; DP provides formal bounds on what the output releases about
+      any individual. The two mechanisms address orthogonal threat surfaces:
+      TEE protects intermediate state, DP protects the release.
+    artefacts:
+      - attestation report and enclave measurement
+      - DP parameter manifest (epsilon, delta, sensitivity, noise mechanism)
+      - release log with composition accounting
+      - dual trust model declaration (vendor trust + parameter governance)
+    advantage: >
+      Clear functional separation between in-use privacy (TEE) and output disclosure
+      risk (DP). Allows each to be audited independently. Common pattern in
+      cloud-hosted confidential analytics.
+    shortcoming: >
+      Dual trust anchors — hardware vendor and correct DP parameterisation — both
+      require assurance; composability risk if threat models are misaligned.
+    confidence: deployment_documented
+    references:
+      - "ONS Secure Research Service"
+      - "AWS Nitro + DP workflows"
+      - "Schuster et al. (2015)"
+
+  - id: P-05
+    pets: [TEE, MPC]
+    combination_logic: >
+      Hardware isolation used to host MPC protocol execution, reducing communication
+      overhead and providing an additional hardware-enforced confidentiality layer
+      for the computation. TEE attestation provides evidence that the correct
+      protocol is running.
+    artefacts:
+      - attestation report
+      - MPC protocol specification and adversary model
+      - implementation audit covering both enclave and protocol layers
+      - benchmark evidence (latency, throughput)
+    advantage: >
+      Performance gain for some MPC workloads; hardware isolation reduces
+      the trust required in the MPC coordinator or aggregator.
+    shortcoming: >
+      Hybrid assurance narrative is harder to audit; assurance artefacts span
+      both cryptographic and hardware domains; enclave memory limits can
+      constrain MPC circuit size.
+    confidence: practitioner_reported
+    references:
+      - "Knauth et al. (2018) — TEE-hosted MPC"
+
+  - id: P-06
+    pets: [TEE, ZKP]
+    combination_logic: >
+      TEE provides hardware isolation for the ZKP prover, protecting sensitive
+      witness data during proof generation. ZKP provides verifiable correctness
+      of the computation result. Together: verifiable execution with reduced
+      intermediate disclosure risk.
+    artefacts:
+      - attestation report confirming prover enclave
+      - circuit definition and verification keys
+      - proof artefacts (proof object, verifier time benchmark)
+      - implementation assurance (circuit audit, under-constraint check)
+    advantage: >
+      Combines hardware-enforced prover privacy with cryptographic verifiability.
+      Relevant for verifiable ML inference (ZKML) pipelines where model weights
+      are sensitive.
+    shortcoming: >
+      Specialised infrastructure; proof generation cost remains a bottleneck;
+      hybrid assurance spans both hardware and cryptographic domains;
+      limited production deployments outside research contexts.
+    confidence: theoretical
+    references:
+      - "Chen et al. (2024) — ZKML"
+      - "Ernstberger et al. (2023)"
+
+  - id: P-07
+    pets: [TRE, DP]
+    combination_logic: >
+      Formal DP output bounds applied within a governed access environment. DP
+      complements (rather than replaces) human output checking — outputs must pass
+      both statistical noise bounding and procedural clearance review. The TRE
+      provides the institutional accountability layer; DP provides the mathematical
+      disclosure bound.
+    artefacts:
+      - output clearance workflow and decision log
+      - DP accountant and parameter manifest
+      - release policy documentation
+      - access and project approval audit records
+    advantage: >
+      Strong fit for public-sector and accredited research settings. The two
+      mechanisms address distinct failure modes (procedural and statistical).
+      Audit-ready when artefacts are bundled and maintained.
+    shortcoming: >
+      Governance latency; sign-off burden; DP parameter policy requires
+      non-technical domain input; legal sufficiency of DP evidence varies
+      by jurisdiction.
+    confidence: deployment_documented
+    references:
+      - "ONS Safe Outputs guidance (2024)"
+      - "ADR UK output checking (2024)"
+      - "NIST IR 8062 (2023)"
+
+  - id: P-08
+    pets: [SYN, DP]
+    combination_logic: >
+      DP formally bounds the privacy loss incurred during generator training (e.g.
+      DP-SGD applied to a GAN or VAE) or at the point of synthetic dataset release.
+      Without DP coupling, synthetic data provides no formal privacy guarantee;
+      with DP, the release is mathematically bounded but typically lower fidelity.
+    artefacts:
+      - DP training or release parameter manifest (epsilon, delta, mechanism)
+      - privacy/utility evaluation (task performance vs. non-private baseline)
+      - membership inference audit results
+      - disclosure-risk assessment and linking tests
+    advantage: >
+      More legally and evidentially defensible synthetic release than uncoupled
+      generation. Cleaner assurance narrative than standalone synthetic data.
+    shortcoming: >
+      Lower fidelity than non-private synthetic data; privacy-utility degradation
+      is data-dependent and hard to predict ex ante; DP-SGD applied to generative
+      models compounds noise across generation steps.
+    confidence: peer_reviewed
+    references:
+      - "McKenna et al. (2021) — NIST DP synthetic data competition"
+      - "Xie et al. (2018) — DP-GAN"
+      - "Houssiau et al. (2022) — TAPAS"

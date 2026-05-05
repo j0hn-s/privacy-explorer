@@ -4,6 +4,22 @@ A companion repository to the survey paper *Implementation-Centred Privacy-Enhan
 
 > The survey argues that PET viability depends less on cryptographic strength and more on whether privacy claims can be rendered into repeatable, inspectable assurance artefacts. The tables below encode that argument in a relational form: technique primitives → pairwise combinations → three-layer stacks → sector deployment contexts.
 
+> **These tables are suggestive and indicative, not prescriptive.** Maturity stage assessments reflect a reading of available peer-reviewed literature and documented deployments at time of writing. Reasonable experts will disagree — particularly on maturity stages, which are sensitive to sector context, organisational capacity, and the evidence threshold you apply. The [YAML data files](data/) are the canonical source for forking and revising any entry.
+
+---
+
+## Navigation
+
+| Resource | Purpose |
+|----------|---------|
+| **This file** | Reference tables (T1–T4) rendered as markdown |
+| [DIAGRAM.md](DIAGRAM.md) | Visual diagrams of the same data — ER schema, combination network, sector map |
+| [data/primitives.yaml](data/primitives.yaml) | T1 source data — edit to revise individual technique entries |
+| [data/pairings.yaml](data/pairings.yaml) | T2 source data — edit to add, remove, or contest two-PET pairings |
+| [data/stacks.yaml](data/stacks.yaml) | T3 source data — edit to add or revise three-layer stacks |
+| [data/sectors.yaml](data/sectors.yaml) | T4 source data — edit to revise sector mappings and maturity assessments |
+| [privacy-cards/](privacy-cards/) | Planned: structured per-deployment privacy artefact cards (not yet built) |
+
 ---
 
 ## Section 4 — Comparative PET Reference Tables

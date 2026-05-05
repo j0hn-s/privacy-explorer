@@ -1,0 +1,217 @@
+# T1 — PET Primitives Registry
+#
+# Schema version: 1.0
+# Cross-references: IDs here are used as foreign keys in pairings.yaml (pet_a, pet_b),
+#                   stacks.yaml (added_layer), and sectors.yaml (primary_stacks).
+#
+# IMPORTANT: This data is suggestive and indicative. Maturity stage assessments
+# reflect a reading of available peer-reviewed literature and documented deployments
+# at time of writing. Reasonable experts will disagree, particularly on maturity_stage,
+# which is sensitive to sector context and the evidence threshold applied.
+# Edit freely — fork this file and revise any field you disagree with.
+#
+# maturity_stage scale:
+#   1 = Experimental / pilot
+#   2 = Repeatable deployment
+#   3 = Standardised assurance
+#   4 = Audit-ready / procurement-ready
+
+schema_version: "1.0"
+last_updated: "2026-05"
+
+primitives:
+
+  - id: DP
+    technique: Differential Privacy
+    family: algorithmic
+    trust_model: >
+      Correct parameterisation and accounting required. Central DP assumes a trusted
+      curator; local DP tolerates an adversarial curator but collects noisy data.
+      Privacy guarantee depends on accurate sensitivity analysis and composition accounting.
+    core_artefacts:
+      - privacy budget / accountant (epsilon, delta)
+      - parameter manifest (noise mechanism, sensitivity, clipping norm)
+      - composition assumptions (sequential, parallel, advanced)
+      - release log
+    bottleneck: Utility loss; parameter governance; privacy budget composition across queries
+    maturity_stage: 3
+    maturity_notes: >
+      Standardised assurance in official statistics (ONS, US Census Bureau) and
+      consumer telemetry (Google RAPPOR, Apple DP). NIST guidance and ISO/IEC
+      frameworks exist. Parameter governance and legal sufficiency remain open
+      questions in many deployment contexts.
+    key_references:
+      - "Dwork & Roth (2014)"
+      - "NIST IR 8062 (2023)"
+      - "U.S. Census Bureau DAS (2021)"
+
+  - id: MPC
+    technique: Secure Multi-Party Computation
+    family: algorithmic
+    trust_model: >
+      Protocol-dependent adversary model (honest-but-curious or malicious depending
+      on protocol). No single trusted curator. Trust distributed across parties;
+      privacy holds as long as the threshold of corrupted parties is not exceeded.
+    core_artefacts:
+      - protocol specification
+      - adversary model declaration (threshold, corruption model)
+      - test vectors
+      - implementation audit
+      - communication benchmark (round complexity, bandwidth)
+    bottleneck: Communication and compute overhead; scales poorly with party count and circuit depth
+    maturity_stage: 2
+    maturity_notes: >
+      Selective production in finance (credit scoring, fraud), genomics (iDASH),
+      and benchmarking. Domain-specific frameworks (SPDZ, CrypTen) have improved
+      usability. Broad deployment limited by overhead and specialist expertise.
+    key_references:
+      - "Evans et al. (2018)"
+      - "Archer et al. (2018)"
+      - "Bogetoft et al. (2009)"
+
+  - id: HE
+    technique: Homomorphic Encryption
+    family: algorithmic
+    trust_model: >
+      Data owner trusts the evaluator only with ciphertext. Security rests on
+      hardness assumptions (e.g. Ring-LWE). Parameter regime must be selected
+      correctly; misparameterisation can silently void guarantees or destroy utility.
+    core_artefacts:
+      - parameter set and security level
+      - precision / approximation bounds (especially CKKS)
+      - benchmark suite (per-operation timing, memory profile)
+      - toolchain and library version manifest
+    bottleneck: Compute cost (10^3–10^5x plaintext); memory pressure; workload fit for non-linear ops
+    maturity_stage: 2
+    maturity_notes: >
+      Emerging with niche production (IBM HE4Cloud in financial services). Standards
+      activity underway (NIST). Hardware acceleration (Intel Heracles, FPGA, photonic)
+      expected to shift frontier. Practical mainly for fixed, small-scale inference
+      or aggregation currently.
+    key_references:
+      - "Halevi & Shoup (2020)"
+      - "NIST WPEC (2024)"
+      - "IBM HE4Cloud (2025)"
+
+  - id: ZKP
+    technique: Zero-Knowledge Proofs
+    family: algorithmic
+    trust_model: >
+      Prover may be malicious; verifier trust anchored in cryptographic soundness of
+      the proof system. Zero-knowledge property depends on proof system, circuit
+      correctness, and setup model. Trusted setup (zk-SNARK) introduces a distinct
+      trust assumption; transparent setups (zk-STARK) avoid this.
+    core_artefacts:
+      - circuit definition and arithmetic constraints
+      - verification key and setup transcript (if trusted setup used)
+      - benchmark report (proof size, prover time, verifier time)
+      - implementation and toolchain version manifest
+    bottleneck: Prover compute cost; circuit engineering complexity; under-constraint risk
+    maturity_stage: 2
+    maturity_notes: >
+      Highest maturity in blockchain / Web3 (rollups, verifiable transactions).
+      zk-Bench addresses reproducibility gap. Limited outside cryptographic-verification
+      contexts. ZKML emerging but bottlenecked by proving cost and circuit expressiveness.
+    key_references:
+      - "Ben-Sasson et al. (2022)"
+      - "Ernstberger et al. (2023) — zk-Bench"
+      - "Roelink & El-Hajj (2024)"
+
+  - id: SYN
+    technique: Synthetic Data
+    family: algorithmic
+    trust_model: >
+      Privacy is contingent on the generator, leakage controls applied during training,
+      and the downstream release context. Does not provide privacy by construction —
+      formal guarantees require explicit coupling to DP or adversarial auditing.
+      Residual disclosure risk frequently underestimated in practice.
+    core_artefacts:
+      - disclosure-risk evaluation (membership inference, linkage tests)
+      - utility benchmark (task performance vs. real data baseline)
+      - attack-based audit (e.g. TAPAS)
+      - generation parameters and model version manifest
+    bottleneck: Validation burden; regulator and procurer acceptance; privacy/utility prediction ex ante
+    maturity_stage: 2
+    maturity_notes: >
+      High uptake across health, public sector, and finance. Assurance practices
+      uneven — many deployments lack formal disclosure risk evaluation. ICO, ODI,
+      and OECD guidance converging on evaluation-first posture.
+    key_references:
+      - "Stadler et al. (2022)"
+      - "McKenna et al. (2021)"
+      - "Houssiau et al. (2022) — TAPAS"
+
+  - id: FL
+    technique: Federated Learning / Distributed Analytics
+    family: architectural
+    trust_model: >
+      Participants semi-trusted; coordinator assumed honest-but-curious. Raw data
+      stays local but model updates can leak information. Poisoning and Byzantine
+      update risks require explicit mitigations. Privacy of updates not guaranteed
+      without additional algorithmic PETs.
+    core_artefacts:
+      - training protocol specification
+      - aggregation rules and secure aggregation spec
+      - convergence and robustness reports
+      - audit logs (round participation, update filtering)
+    bottleneck: Communication rounds; non-IID data effects; coordination overhead; update leakage
+    maturity_stage: 2
+    maturity_notes: >
+      Pilot-to-operational in healthcare (NVIDIA FLARE, NHS FLIP, OpenSAFELY) and
+      technology (Google Gboard). Standards emerging. Rarely deployed without
+      additional algorithmic PETs (DP, secure aggregation) in sensitive settings.
+    key_references:
+      - "McMahan et al. (2017)"
+      - "Kairouz et al. (2021)"
+      - "Soltan et al. (2024)"
+
+  - id: TEE
+    technique: Trusted Execution Environment
+    family: architectural
+    trust_model: >
+      Trust in hardware vendor, attestation chain, and implementation correctness.
+      OS and hypervisor may be hostile. Side-channel attacks (Spectre, SGX-specific)
+      are a residual risk. Attestation proves a measured enclave is running on
+      genuine hardware — it does not prove the enclave code is correct.
+    core_artefacts:
+      - attestation report and enclave measurement
+      - dependency manifest (enclave code version, libraries)
+      - side-channel mitigation declaration
+      - key management and provisioning audit
+    bottleneck: Vendor trust; enclave memory limits; operational key management; side-channel posture
+    maturity_stage: 3
+    maturity_notes: >
+      Commercially deployed across major cloud providers (AWS Nitro, Azure Confidential
+      Computing, Google Confidential VMs). Increasing audit scrutiny. Organisations
+      frequently lack expertise to deploy securely; hybrid PETs typically needed to
+      close residual risks.
+    key_references:
+      - "Costan & Devadas (2016)"
+      - "Geppert et al. (2022)"
+      - "OpenMined / UK AISI pilot (2026)"
+
+  - id: TRE
+    technique: Trusted Research Environment
+    family: architectural
+    trust_model: >
+      Institutional trust plus layered technical and procedural safeguards. Relies on
+      the Five Safes framework (safe people, projects, data, settings, outputs).
+      Output checking and access audits are first-class assurance mechanisms, not
+      optional supplements. TREs are socio-technical control regimes, not purely
+      technical ones.
+    core_artefacts:
+      - access audit logs and accreditation records
+      - output checking workflow and clearance decisions
+      - data governance documentation (project approvals, data scope)
+      - safe outputs policy and disclosure control rules
+    bottleneck: Governance latency; human review throughput; institutional capacity
+    maturity_stage: 4
+    maturity_notes: >
+      Mature in UK public sector (ONS Secure Research Service, NHS SDEs, ADR UK).
+      Increasingly the standard for sensitive data access in government and health
+      research. Model for audit-ready PET use when combined with algorithmic PETs
+      at the output stage.
+    key_references:
+      - "ONS (2024)"
+      - "ADR UK (2024)"
+      - "Goldacre Review (2022)"
