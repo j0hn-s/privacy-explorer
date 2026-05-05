@@ -1,0 +1,154 @@
+# T3 — Three-PET Stacks
+#
+# Schema version: 1.0
+# Cross-references:
+#   base_pair must exist in pairings.yaml as PAIRING.id
+#   added_layer must exist in primitives.yaml as PRIMITIVE.id
+#   stack_id values are used as foreign keys in sectors.yaml (primary_stacks)
+#
+# IMPORTANT: Three-layer stacks appear where governance pressure or regulatory stakes
+# justify the added coordination overhead. This list is intentionally short — most
+# plausible three-PET combinations fail at least one of: assurance coherence,
+# operational feasibility, or institutional acceptability. See DIAGRAM.md Section 7
+# for the rationale for scarcity.
+#
+# confidence levels: same scale as pairings.yaml
+
+schema_version: "1.0"
+last_updated: "2026-05"
+
+stacks:
+
+  - id: S-01
+    base_pair: P-03
+    added_layer: DP
+    full_stack: [FL, TEE, DP]
+    rationale: >
+      Defence-in-depth for distributed training: local data retention (FL) keeps raw
+      data on client devices; hardware isolation (TEE) protects the aggregation server
+      from the host OS and cloud operator; formal output bounds (DP) limit what the
+      released model reveals about any individual. Each layer addresses a distinct
+      threat surface, and the assurance artefacts from each compose without overlap.
+    use_case: >
+      NVIDIA FLARE healthcare federated analytics; NHS federated learning pilots
+      (Soltan et al. 2024); cross-site oncology and COVID-19 screening models.
+    assurance_narrative: >
+      Attestation confirms enclave integrity and correct aggregation code; privacy
+      accountant bounds statistical leakage at release; protocol audit covers
+      aggregation correctness. Strongest layered assurance for federated analytics.
+    key_artefacts:
+      - attestation report (TEE layer)
+      - privacy accountant and parameter manifest (DP layer)
+      - training protocol and aggregation specification (FL layer)
+      - output clearance or release log
+    shortcoming: >
+      Highest coordination cost of the federated stack variants; multi-layer
+      composability risk if TEE and DP threat models are not explicitly aligned;
+      requires expertise spanning systems, cryptography, and privacy engineering.
+    confidence: deployment_documented
+    references:
+      - "NVIDIA FLARE (2021)"
+      - "Soltan et al. (2024)"
+      - "Bonawitz et al. (2017)"
+
+  - id: S-02
+    base_pair: P-07
+    added_layer: TEE
+    full_stack: [TRE, TEE, DP]
+    rationale: >
+      Layered public-sector assurance for high-sensitivity governed analytics:
+      institutional access controls and procedural review (TRE) provide accountability;
+      hardware isolation (TEE) protects data in use from the infrastructure operator;
+      formal output bounds (DP) constrain statistical disclosure at release. The three
+      layers correspond to three distinct assurance regimes — procedural, hardware,
+      and mathematical — that reinforce rather than duplicate each other.
+    use_case: >
+      ONS Secure Research Service; ADR UK accredited data environments; NHS Secure
+      Data Environments with confidential computing capability.
+    assurance_narrative: >
+      Governance logs and output clearance decisions cover institutional accountability;
+      attestation covers in-use confidentiality of the compute environment; DP accountant
+      covers statistical release. Produces the broadest assurance portfolio of any
+      stack in this registry. Audit-ready when all three artefact sets are maintained.
+    key_artefacts:
+      - access audit logs and output clearance records (TRE layer)
+      - attestation report and enclave measurement (TEE layer)
+      - DP parameter manifest and accountant (DP layer)
+      - change-control log across all three layers
+    shortcoming: >
+      Highest operational complexity and governance overhead in the registry; requires
+      cross-disciplinary teams (governance, systems, privacy engineering); latency
+      from multi-layer approval processes can stall research timelines.
+    confidence: deployment_documented
+    references:
+      - "ONS (2024)"
+      - "ADR UK (2024)"
+      - "Goldacre Review (2022)"
+
+  - id: S-03
+    base_pair: P-02
+    added_layer: DP
+    full_stack: [FL, MPC, DP]
+    rationale: >
+      Extends FL + secure aggregation (P-02) by adding formal per-update and output
+      privacy bounds. Secure aggregation (MPC layer) ensures the coordinator sees only
+      the cryptographic sum of updates; DP bounds what that sum can reveal about any
+      individual contributor. This stack closes the gap that exists in P-01
+      (FL+DP without secure aggregation), where a semi-honest coordinator could see
+      individual DP-noised updates.
+    use_case: >
+      Production cross-device FL with untrusted coordinator at scale
+      (Bonawitz et al. 2017 framework); cross-institutional healthcare ML
+      where coordinator trust is explicitly limited.
+    assurance_narrative: >
+      Aggregation correctness and coordinator-blindness from the MPC/secure aggregation
+      layer; formal per-user privacy bound from the DP layer; training protocol
+      documentation covers the FL coordination logic. The combined claim — the server
+      learns only a DP-bounded aggregate — is stronger than either P-01 or P-02 alone.
+    key_artefacts:
+      - aggregation protocol specification and correctness proof (MPC layer)
+      - privacy accountant across rounds (DP layer)
+      - training protocol and client participation log (FL layer)
+    shortcoming: >
+      Communication overhead compounds from both the MPC and FL layers; privacy
+      accounting must correctly model the interaction between secure aggregation
+      sampling and DP noise; engineering and operational complexity is high.
+    confidence: peer_reviewed
+    references:
+      - "Bonawitz et al. (2017)"
+      - "Ball et al. (2024) — DP FTRL with secure aggregation"
+
+  - id: S-04
+    base_pair: P-08
+    added_layer: TEE
+    full_stack: [TEE, SYN, DP]
+    rationale: >
+      Attested, DP-trained synthetic data generation: the generative model is trained
+      inside a TEE, protecting the source data from the infrastructure operator during
+      training; DP bounds the privacy loss incurred during training and release; the
+      resulting synthetic dataset inherits both hardware-enforced and formal
+      mathematical assurance. Addresses the concern that DP-synthetic data generation
+      is only as trustworthy as the environment in which it runs.
+    use_case: >
+      Controlled synthetic data releases in high-sensitivity governed environments;
+      TRE-sandboxed synthetic data where the generation code itself must be attested.
+    assurance_narrative: >
+      Attestation covers the integrity of the generation environment (no tampering
+      with the training code or data pipeline); DP parameters cover statistical
+      disclosure risk at release; disclosure-risk evaluation covers residual
+      re-identification risk in the output. Strongest synthetic assurance posture
+      currently identifiable; rarely deployed outside high-sensitivity contexts.
+    key_artefacts:
+      - attestation report confirming generation enclave (TEE layer)
+      - DP training/release parameter manifest and accountant (DP layer)
+      - disclosure-risk evaluation and utility benchmark (SYN layer)
+      - membership inference audit results
+    shortcoming: >
+      Rarely deployed; specialist infrastructure and multi-domain expertise required;
+      utility loss from DP is compounded by the generative model's own fidelity loss;
+      TEE enclave memory limits can constrain generator architecture.
+    confidence: theoretical
+    references:
+      - "McKenna et al. (2021)"
+      - "Carlini et al. (2019) — generative model leakage"
+      - "Houssiau et al. (2022) — TAPAS"

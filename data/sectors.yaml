@@ -1,0 +1,195 @@
+# T4 — Sectoral Deployment Context
+#
+# Schema version: 1.0
+# Cross-references:
+#   primary_stacks[] values must exist in pairings.yaml (PAIRING.id) or
+#   stacks.yaml (STACK.id).
+#   role values: primary = dominant pattern; secondary = common but not leading;
+#                experimental = pilot or niche use
+#
+# IMPORTANT: Sector boundaries are coarse. Sub-sector variation is significant —
+# a 'healthcare' entry covers both cross-institutional research and clinical operational
+# settings, which have different dominant stacks. Splitting into sub-sectors is a
+# planned iteration (see DIAGRAM.md). Maturity stage assessments are suggestive:
+# they reflect the best-evidenced deployments in a sector, not the median.
+#
+# maturity_stage scale (same as primitives.yaml):
+#   1 = Experimental / pilot
+#   2 = Repeatable deployment
+#   3 = Standardised assurance
+#   4 = Audit-ready / procurement-ready
+
+schema_version: "1.0"
+last_updated: "2026-05"
+
+sectors:
+
+  - id: public_sector
+    label: "Public sector / official statistics / governed research"
+    typical_problem: >
+      High-value sensitive data (census, admin linkage, social policy) requiring
+      repeated access, strong accountability, and public trust. Outputs must be
+      legally defensible and regulatorily compliant. Governance artefacts are
+      as important as technical ones.
+    primary_stacks:
+      - ref: P-07
+        role: primary
+      - ref: S-02
+        role: primary
+      - ref: P-08
+        role: secondary
+    assurance_posture: >
+      Output checking, audit logs, reproducible privacy accounting, release
+      policy documentation. Human-in-the-loop clearance is a first-class
+      assurance mechanism.
+    dominant_anchor: "Procedural governance artefacts + formal statistical output control"
+    maturity_stage: 3
+    maturity_notes: >
+      Stage 3–4 where PETs slot into existing governance regimes (ONS, US Census,
+      NHS SDEs). Stage 3 is the modal pattern; stage 4 (full audit-readiness) is
+      reached where TRE + DP is operationalised with maintained change-control logs.
+    blocker: >
+      Governance latency; legal sufficiency of DP evidence varies by jurisdiction;
+      DP parameter policy requires non-technical policy input; standards recognition
+      for newer stacks (e.g. TEE-based confidential analytics) still emerging.
+    key_examples:
+      - "ONS Secure Research Service"
+      - "ADR UK accredited environments"
+      - "U.S. Census Bureau 2020 DAS"
+      - "NHS England Secure Data Environment"
+
+  - id: healthcare
+    label: "Healthcare / biomedical research"
+    typical_problem: >
+      Highly sensitive fragmented data (clinical records, genomics, imaging) held
+      across multiple institutions. Strong scientific and clinical validity
+      requirements. Regulatory compliance (GDPR, HIPAA equivalents) and
+      institutional approval processes are non-negotiable constraints.
+    primary_stacks:
+      - ref: P-01
+        role: primary
+      - ref: P-03
+        role: secondary
+      - ref: S-01
+        role: primary
+    assurance_posture: >
+      Clinical validity, robustness monitoring, institutional approval,
+      implementation transparency. Technical privacy artefacts must be
+      accompanied by domain-specific utility evidence (AUROC, task benchmarks).
+    dominant_anchor: "Regulatory and clinical sign-off alongside technical assurance artefacts"
+    maturity_stage: 2
+    maturity_notes: >
+      Often stalls between stage 2 and 3 because sign-off burden is non-technical
+      as well as technical. Institutional approval, clinical validation, and
+      fairness / bias analysis are not covered by technical PET artefacts alone.
+      Stage 3 reached in select large-scale deployments (FLIP, OpenSAFELY).
+    blocker: >
+      Domain-specific validity requirements; multi-stakeholder approval chains;
+      fairness and demographic bias under DP is under-researched; data
+      heterogeneity (non-IID) degrades FL utility.
+    key_examples:
+      - "NVIDIA FLARE / NHS FLIP (King's College London)"
+      - "OpenSAFELY (Bennett Institute / NHS England)"
+      - "US-UK PETs Prize Challenge (2022–2023)"
+      - "Froelicher et al. (2021) — federated HE for genomics"
+
+  - id: finance
+    label: "Finance / fraud detection / inter-organisational analytics"
+    typical_problem: >
+      Strong commercial incentive for joint analysis across organisational boundaries
+      (banks, insurers, payment networks) without pooling raw data. Latency and
+      throughput matter. Regulatory compliance and audit requirements are sector-specific
+      and vary by jurisdiction.
+    primary_stacks:
+      - ref: P-05
+        role: primary
+      - ref: P-04
+        role: secondary
+      - ref: P-06
+        role: secondary
+    assurance_posture: >
+      Threat-model clarity, implementation audit, benchmarked performance,
+      correctness verification. Performance evidence and cryptographic audit
+      substitute for public-sector-style procedural governance.
+    dominant_anchor: "Technical performance evidence and implementation audit"
+    maturity_stage: 2
+    maturity_notes: >
+      Stage 2–3. Strongest uptake where high-value cross-party use cases justify
+      specialist engineering (credit scoring, fraud, benchmarking). MPC and TEE
+      deployments are the most production-mature. HE and ZKP remain largely at
+      stage 2 outside blockchain-adjacent contexts.
+    blocker: >
+      Compute and communication overhead for MPC and HE at scale; commercial
+      incentive required to offset engineering cost; regulatory acceptance of
+      cryptographic assurance artefacts varies across jurisdictions.
+    key_examples:
+      - "Bogetoft et al. (2009) — MPC for Danish agriculture"
+      - "WEF / BCG cross-bank SGX pilot (2019/2021)"
+      - "Mastercard confidential analytics (2024)"
+      - "IBM HE4Cloud in financial services (2025)"
+
+  - id: technology
+    label: "Technology platforms / consumer AI / large-scale telemetry"
+    typical_problem: >
+      Massive scale (billions of users), continuous telemetry and model update
+      streams, infrastructure integration constraints. Privacy must be built into
+      production pipelines rather than applied as a bespoke overlay. Parameter
+      governance and accountability at scale are dominant concerns.
+    primary_stacks:
+      - ref: P-01
+        role: primary
+      - ref: P-02
+        role: primary
+      - ref: P-04
+        role: secondary
+    assurance_posture: >
+      Parameter governance, continuous privacy accounting, interface discipline,
+      systems integration. Accountability of composition across many releases
+      is a distinct challenge at this scale.
+    dominant_anchor: "Accountable, continuously monitored production pipelines"
+    maturity_stage: 3
+    maturity_notes: >
+      Stage 3 where PETs are built directly into platform infrastructure (Google
+      Privacy Sandbox, Apple DP telemetry, Google Gboard FL). Parameter drift and
+      regulatory clarity on epsilon values at population scale remain open concerns.
+    blocker: >
+      Accountability of composition over millions of releases; regulatory clarity
+      on what constitutes adequate DP parameterisation at platform scale; interface
+      discipline to prevent accidental non-private fallbacks.
+    key_examples:
+      - "Google RAPPOR and Privacy Sandbox"
+      - "Apple DP telemetry"
+      - "Google Gboard FL with secure aggregation"
+      - "Meta / Mozilla IPA (Interoperable Private Attribution)"
+
+  - id: web3
+    label: "Web3 / verifiable infrastructure / credential ecosystems"
+    typical_problem: >
+      Need to prove correctness, eligibility, or compliance with minimal disclosure
+      in permissionless or low-trust environments. Cryptographic verification serves
+      as the primary governance mechanism; procedural human-in-the-loop review is
+      absent or minimal by design.
+    primary_stacks:
+      - ref: P-06
+        role: primary
+    assurance_posture: >
+      Proof-system soundness, circuit correctness, benchmark reproducibility,
+      trusted-setup transparency. Cryptographic verification is the assurance
+      anchor; governance artefacts in the public-sector sense are largely absent.
+    dominant_anchor: "Cryptographic proof as the sole or primary assurance mechanism"
+    maturity_stage: 2
+    maturity_notes: >
+      Stage 2–3 where cryptographic verification itself is the assurance anchor
+      (blockchain rollups, verifiable transactions). Stage 1–2 outside these
+      contexts. zkBench and related tooling are improving reproducibility.
+      ZKML and ZKP credential ecosystems (eIDAS 2.0, W3C VC 2.0) remain stage 1–2.
+    blocker: >
+      Proof generation cost; circuit under-constraint risk; irreproducible benchmarks
+      limiting comparability; limited standardisation outside blockchain; governance
+      misalignment when ZKP is proposed for public-sector contexts expecting
+      procedural accountability.
+    key_examples:
+      - "zk-SNARK rollups (Ethereum, StarkWare)"
+      - "Babel & Sedlmeir (2023) — ZKP anonymous credentials"
+      - "W3C Verifiable Credentials 2.0"
+      - "eIDAS 2.0 European Digital Identity framework"
