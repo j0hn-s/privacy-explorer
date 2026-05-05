@@ -2,7 +2,7 @@
 
 A companion repository to the survey paper *Implementation-Centred Privacy-Enhancing Technologies: Mechanisms, Combinations, and Assurance* — providing structured, implementation-centred reference tables for reasoning about PET combinations, deployment maturity, and assurance artefacts.
 
-> The survey argues that PET viability depends less on cryptographic strength and more on whether privacy claims can be rendered into repeatable, inspectable assurance artefacts. The tables below encode that argument in a relational form: technique primitives → pairwise combinations → three-layer stacks → sector deployment contexts.
+> The survey argues that PET viability depends less on technological strength and more on whether privacy claims can be rendered into repeatable, inspectable assurance artefacts. The tables below encode that argument in a relational form: technique primitives → pairwise combinations → three-layer stacks → sector deployment contexts.
 
 > **These tables are suggestive and indicative, not prescriptive.** Maturity stage assessments reflect a reading of available peer-reviewed literature and documented deployments at time of writing. Reasonable experts will disagree — particularly on maturity stages, which are sensitive to sector context, organisational capacity, and the evidence threshold you apply. The [YAML data files](data/) are the canonical source for forking and revising any entry.
 
