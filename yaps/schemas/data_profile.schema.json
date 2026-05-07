@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/privacy-explorer/yaps/schemas/data_profile.schema.json",
+  "title": "Data Profile",
+  "description": "A structured description of the data being processed by a privacy-card-governed system. Captures sensitivity, linkage risks, jurisdiction, and data-level access control intent (including Solid Pod integration). Referenced from Privacy Cards via the data_profile_ref field.",
+  "type": "object",
+  "required": [
+    "profile_id",
+    "schema_version",
+    "data_categories",
+    "sensitivity_level"
+  ],
+  "additionalProperties": false,
+  "properties": {
+
+    "profile_id": {
+      "type": "string",
+      "description": "Unique identifier for this data profile.",
+      "examples": ["DP-healthcare-imaging-202605"]
+    },
+
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "created": { "type": "string", "format": "date" },
+    "last_updated": { "type": "string", "format": "date" },
+
+    "data_categories": {
+      "type": "array",
+      "description": "The types of personal or sensitive data present.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["category", "special_category"],
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "type": "string",
+            "examples": [
+              "clinical records", "genomic data", "financial transactions",
+              "location data", "behavioural telemetry", "biometric data",
+              "census / administrative data", "survey responses"
+            ]
+          },
+          "special_category": {
+            "type": "boolean",
+            "description": "Whether this is special-category data under GDPR Art. 9 / equivalent."
+          },
+          "volume": {
+            "type": "string",
+            "examples": ["~100K records", ">1M individuals", "national census"]
+          },
+          "temporal_range": {
+            "type": "string",
+            "examples": ["2018–2024", "rolling 90-day window"]
+          }
+        }
+      }
+    },
+
+    "sensitivity_level": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "strictly-confidential"],
+      "description": "Overall sensitivity classification."
+    },
+
+    "data_controller": {
+      "type": "string",
+      "description": "Organisation(s) acting as data controller."
+    },
+
+    "data_processors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Downstream processors, if any."
+    },
+
+    "jurisdiction": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Jurisdictions governing this data.",
+      "examples": [["UK", "EU"], ["US"]]
+    },
+
+    "linkage_risk": {
+      "type": "object",
+      "description": "Known or assessed re-identification and linkage risk factors.",
+      "additionalProperties": false,
+      "properties": {
+        "quasi_identifiers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fields that individually are non-identifying but may combine to re-identify.",
+          "examples": [["age", "postcode", "diagnosis"], ["device_id", "timestamp", "location"]]
+        },
+        "known_external_datasets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Publicly available datasets that could be used for linkage attacks."
+        },
+        "assessed_re_id_risk": {
+          "type": "string",
+          "enum": ["negligible", "low", "medium", "high", "not-assessed"],
+          "description": "Overall re-identification risk assessment."
+        },
+        "assessment_method": {
+          "type": "string",
+          "description": "How the re-identification risk was assessed.",
+          "examples": ["ICO anonymisation checklist", "TAPAS audit", "membership inference test", "manual review"]
+        }
+      }
+    },
+
+    "auxiliary_data_risk": {
+      "type": "object",
+      "description": "Risk from auxiliary data an attacker may hold. This field is reserved for future tooling — current rule engine does not fully evaluate this risk.",
+      "additionalProperties": false,
+      "properties": {
+        "risk_present": {
+          "type": "boolean",
+          "description": "Whether auxiliary data attack vectors have been identified."
+        },
+        "known_auxiliary_sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Known or plausible auxiliary datasets in the attack surface."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Narrative on auxiliary data risk. See YAPS README for future tooling plans."
+        }
+      }
+    },
+
+    "access_control": {
+      "type": "object",
+      "description": "Who is permitted to access this data and under what conditions.",
+      "additionalProperties": false,
+      "properties": {
+        "access_model": {
+          "type": "string",
+          "enum": ["open", "restricted", "accredited", "five-safes", "role-based", "attribute-based"],
+          "description": "The access control model in use."
+        },
+        "access_conditions": {
+          "type": "string",
+          "description": "Conditions under which access is granted."
+        },
+        "authorised_purposes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Purposes for which this data may be used."
+        }
+      }
+    },
+
+    "solid_integration": {
+      "type": "object",
+      "description": "Record of intent for Solid Pod-compatible data-level access control. This is a documentation field, not a runtime connection — YAPS does not connect to a live Solid server. See https://github.com/solid/solid and https://github.com/OXFORDIA-project/OXFORDIA-node for reference implementations.",
+      "additionalProperties": false,
+      "properties": {
+        "pod_uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "WebID or Pod root URI for the data owner, if known."
+        },
+        "acl_policy_ref": {
+          "type": "string",
+          "description": "Reference to the .acl or ACP policy document governing this dataset."
+        },
+        "webid_oidc_provider": {
+          "type": "string",
+          "description": "WebID-OIDC identity provider for access control decisions."
+        },
+        "oxfordia_node_ref": {
+          "type": "string",
+          "description": "Reference to an OXFORDIA-node deployment, if applicable. See https://github.com/OXFORDIA-project/OXFORDIA-node"
+        },
+        "data_residency_intent": {
+          "type": "string",
+          "description": "Where data will reside and under whose control, in Solid architecture terms."
+        },
+        "integration_status": {
+          "type": "string",
+          "enum": ["planned", "in-development", "deployed", "not-applicable"],
+          "description": "Whether Solid integration is implemented or intended."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any additional context on the Solid integration plan."
+        }
+      }
+    },
+
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retention_period": { "type": "string" },
+        "deletion_policy": { "type": "string" }
+      }
+    },
+
+    "notes": {
+      "type": "string",
+      "description": "Any additional context about this data profile."
+    }
+
+  }
+}

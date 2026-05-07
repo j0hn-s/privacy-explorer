@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YAPS — Yet Another Privacy Sandbox</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --accent: #5b7bff;
+    --accent-dim: #3a51b8;
+    --text: #d4d8f0;
+    --text-dim: #8890b8;
+    --red: #e05c5c;
+    --amber: #e8a045;
+    --green: #4caf7d;
+    --info: #5b9bd5;
+    --font: "Inter", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: 56px 1fr;
+    grid-template-areas: "header header" "panel main";
+  }
+
+  /* ── Header ── */
+  header {
+    grid-area: header;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+  }
+  header h1 { font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; }
+  header .subtitle { font-size: 0.75rem; color: var(--text-dim); }
+  header .badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Left panel ── */
+  #panel {
+    grid-area: panel;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .section-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  /* ── Building blocks ── */
+  .block-grid { display: flex; flex-direction: column; gap: 6px; }
+  .block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .block:hover { border-color: var(--accent-dim); background: #1e2235; }
+  .block.active { border-color: var(--accent); background: #1a2040; }
+  .block .dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .block .name { font-size: 0.8rem; font-weight: 500; }
+  .block .family { font-size: 0.65rem; color: var(--text-dim); margin-left: auto; }
+
+  .dot-algo { background: #e8a045; }
+  .dot-arch { background: #5b9bd5; }
+
+  /* ── Context selects ── */
+  .field-group { display: flex; flex-direction: column; gap: 10px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 0.7rem; color: var(--text-dim); }
+  .field select, .field input[type=text] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.8rem;
+    padding: 6px 8px;
+    border-radius: 5px;
+    font-family: var(--font);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field select:focus, .field input[type=text]:focus { border-color: var(--accent); }
+
+  /* ── Run button ── */
+  #runBtn {
+    width: 100%;
+    padding: 10px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: background 0.15s;
+  }
+  #runBtn:hover { background: var(--accent-dim); }
+  #runBtn:disabled { opacity: 0.4; cursor: default; }
+
+  /* ── Main area ── */
+  #main {
+    grid-area: main;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── Stack summary ── */
+  #stackSummary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  #stackSummary h2 { font-size: 0.85rem; margin-bottom: 12px; color: var(--text-dim); }
+  .stack-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  .pill-algo { background: #3a2800; border-color: #e8a045; color: #e8a045; }
+  .pill-arch { background: #0d2235; border-color: #5b9bd5; color: #5b9bd5; }
+  .pill-none { background: var(--surface2); border-color: var(--border); color: var(--text-dim); }
+
+  /* ── Explorer match ── */
+  #explorerMatch {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  #explorerMatch h2 { font-size: 0.85rem; margin-bottom: 12px; color: var(--text-dim); }
+  .match-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: var(--mono);
+    background: #1a2040;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    margin-right: 6px;
+    margin-bottom: 4px;
+  }
+  .match-text { font-size: 0.8rem; color: var(--text-dim); margin-top: 8px; line-height: 1.5; }
+
+  /* ── Rating banner ── */
+  #ratingBanner {
+    border-radius: 8px;
+    padding: 16px 20px;
+    border: 1px solid;
+    display: none;
+  }
+  #ratingBanner.rating-green { background: #0a1f14; border-color: var(--green); }
+  #ratingBanner.rating-amber { background: #1f1400; border-color: var(--amber); }
+  #ratingBanner.rating-red   { background: #1f0a0a; border-color: var(--red); }
+  .rating-label { font-size: 1.2rem; font-weight: 700; }
+  .rating-sub { font-size: 0.8rem; color: var(--text-dim); margin-top: 4px; }
+
+  /* ── Findings ── */
+  #findings { display: flex; flex-direction: column; gap: 12px; }
+  .finding-card {
+    border-radius: 8px;
+    border: 1px solid;
+    padding: 14px 16px;
+  }
+  .finding-card.sev-red   { border-color: var(--red);   background: #1a0a0a; }
+  .finding-card.sev-amber { border-color: var(--amber); background: #1a1000; }
+  .finding-card.sev-green { border-color: var(--green); background: #0a1a10; }
+  .finding-card.sev-info  { border-color: var(--info);  background: #0a0f1a; }
+  .finding-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .sev-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: var(--mono);
+  }
+  .sev-badge.red   { background: var(--red);   color: #fff; }
+  .sev-badge.amber { background: var(--amber); color: #000; }
+  .sev-badge.green { background: var(--green); color: #fff; }
+  .sev-badge.info  { background: var(--info);  color: #fff; }
+  .finding-id { font-family: var(--mono); font-size: 0.7rem; color: var(--text-dim); }
+  .finding-name { font-size: 0.8rem; font-weight: 600; }
+  .finding-text { font-size: 0.78rem; color: var(--text-dim); line-height: 1.6; }
+  .finding-refs { margin-top: 8px; }
+  .finding-refs span { font-size: 0.68rem; color: var(--text-dim); font-style: italic; }
+
+  /* ── Artefact checklist ── */
+  #artefactSection {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  #artefactSection h2 { font-size: 0.85rem; margin-bottom: 12px; color: var(--text-dim); }
+  .artefact-list { display: flex; flex-direction: column; gap: 6px; }
+  .artefact-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.78rem;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .artefact-row:last-child { border-bottom: none; }
+  .artefact-icon { flex-shrink: 0; font-size: 0.9rem; margin-top: 1px; }
+
+  /* ── Governance + Regulatory ── */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .info-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .info-box h2 { font-size: 0.85rem; margin-bottom: 12px; color: var(--text-dim); }
+  .info-row { display: flex; justify-content: space-between; font-size: 0.78rem; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .info-row:last-child { border-bottom: none; }
+  .info-key { color: var(--text-dim); }
+  .info-val { color: var(--text); font-weight: 500; font-family: var(--mono); font-size: 0.72rem; }
+
+  /* ── Export ── */
+  #exportBtn {
+    align-self: flex-start;
+    padding: 8px 16px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: border-color 0.15s;
+  }
+  #exportBtn:hover { border-color: var(--accent); }
+
+  /* ── Empty states ── */
+  .empty-state {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 8px 0;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 700px) {
+    body { grid-template-columns: 1fr; grid-template-areas: "header" "panel" "main"; }
+    .info-grid { grid-template-columns: 1fr; }
+    #panel { max-height: 50vh; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>YAPS — Yet Another Privacy Sandbox</h1>
+    <div class="subtitle">Privacy architecture risk explorer · Rule-based · No external dependencies</div>
+  </div>
+  <div class="badge">v1.0 · indicative only</div>
+</header>
+
+<aside id="panel">
+
+  <div>
+    <div class="section-label">PET Primitives — select to add</div>
+    <div class="block-grid" id="blockGrid"></div>
+  </div>
+
+  <div>
+    <div class="section-label">Deployment Context</div>
+    <div class="field-group">
+      <div class="field">
+        <label for="sectorSel">Sector</label>
+        <select id="sectorSel">
+          <option value="">— select —</option>
+          <option value="public_sector">Public sector / official statistics</option>
+          <option value="healthcare">Healthcare / biomedical research</option>
+          <option value="finance">Finance / fraud / inter-organisational</option>
+          <option value="technology">Technology platforms / consumer AI</option>
+          <option value="web3">Web3 / verifiable infrastructure</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="scaleSel">Scale</label>
+        <select id="scaleSel">
+          <option value="pilot">Pilot</option>
+          <option value="limited-production">Limited production</option>
+          <option value="production">Production</option>
+          <option value="platform-scale">Platform scale</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="outputCtrl">Output control</label>
+        <select id="outputCtrl">
+          <option value="none">None</option>
+          <option value="planned">Planned</option>
+          <option value="automated-statistical">Automated statistical</option>
+          <option value="human-review">Human review</option>
+          <option value="both">Both</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="auditLog">Audit log</label>
+        <select id="auditLog">
+          <option value="false">No</option>
+          <option value="true">Yes</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="regulationSel">Applicable regulation</label>
+        <select id="regulationSel">
+          <option value="">None selected</option>
+          <option value="UK GDPR">UK GDPR</option>
+          <option value="EU GDPR">EU GDPR</option>
+          <option value="HIPAA">HIPAA (US healthcare)</option>
+          <option value="CCPA">CCPA (California)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label">Assurance Artefacts</div>
+    <div id="artefactChecks" class="field-group" style="font-size:0.75rem; color: var(--text-dim);">
+      Select primitives to see artefact prompts.
+    </div>
+  </div>
+
+  <button id="runBtn">Evaluate risk →</button>
+
+</aside>
+
+<main id="main">
+
+  <div id="stackSummary">
+    <h2>Current Stack</h2>
+    <div class="stack-pills" id="stackPills">
+      <span class="pill pill-none">No primitives selected</span>
+    </div>
+  </div>
+
+  <div id="explorerMatch">
+    <h2>Explorer Table Match</h2>
+    <div id="matchContent"><span class="empty-state">Select primitives to see T1–T3 matches.</span></div>
+  </div>
+
+  <div id="ratingBanner"></div>
+
+  <div id="findings"></div>
+
+  <div id="artefactSection" style="display:none">
+    <h2>Artefact Checklist</h2>
+    <div class="artefact-list" id="artefactList"></div>
+  </div>
+
+  <div class="info-grid" id="infoGrid" style="display:none">
+    <div class="info-box" id="govBox">
+      <h2>Governance Summary</h2>
+      <div id="govRows"></div>
+    </div>
+    <div class="info-box" id="regBox">
+      <h2>Regulatory Pointers</h2>
+      <div id="regRows"></div>
+    </div>
+  </div>
+
+  <button id="exportBtn" style="display:none">Export card JSON ↓</button>
+
+</main>
+
+<script>
+// ─── Data ───────────────────────────────────────────────────────────────────
+
+const PRIMITIVES = [
+  { id:"DP",  name:"Differential Privacy",          family:"algorithmic" },
+  { id:"MPC", name:"Secure Multi-Party Computation", family:"algorithmic" },
+  { id:"HE",  name:"Homomorphic Encryption",         family:"algorithmic" },
+  { id:"ZKP", name:"Zero-Knowledge Proofs",          family:"algorithmic" },
+  { id:"SYN", name:"Synthetic Data",                 family:"algorithmic" },
+  { id:"FL",  name:"Federated Learning",             family:"architectural" },
+  { id:"TEE", name:"Trusted Execution Environment",  family:"architectural" },
+  { id:"TRE", name:"Trusted Research Environment",   family:"architectural" },
+];
+
+const PAIRINGS = [
+  { id:"P-01", pets:["FL","DP"],  label:"FL + DP", desc:"Distributed training with formal leakage bounds on model updates" },
+  { id:"P-02", pets:["FL","MPC"], label:"FL + MPC", desc:"Secure aggregation — coordinator sees only the sum of updates" },
+  { id:"P-03", pets:["FL","TEE"], label:"FL + TEE", desc:"Local data retention + hardware isolation of aggregation" },
+  { id:"P-04", pets:["TEE","DP"], label:"TEE + DP", desc:"In-use confidentiality + formal output disclosure bound" },
+  { id:"P-05", pets:["TEE","MPC"],label:"TEE + MPC", desc:"Hardware isolation of MPC protocol execution" },
+  { id:"P-06", pets:["TEE","ZKP"],label:"TEE + ZKP", desc:"Verifiable execution with hardware-enforced prover isolation" },
+  { id:"P-07", pets:["TRE","DP"], label:"TRE + DP", desc:"Formal output control within a governed access environment" },
+  { id:"P-08", pets:["SYN","DP"], label:"SYN + DP", desc:"DP-bounded synthetic data generation and release" },
+];
+
+const STACKS = [
+  { id:"S-01", pets:["FL","TEE","DP"],  label:"FL + TEE + DP", desc:"Defence-in-depth for federated analytics (NVIDIA FLARE/NHS)" },
+  { id:"S-02", pets:["TRE","TEE","DP"], label:"TRE + TEE + DP", desc:"Layered public sector assurance (ONS SRS / ADR UK)" },
+  { id:"S-03", pets:["FL","MPC","DP"],  label:"FL + MPC + DP", desc:"Secure distributed training with coordinator-blind aggregation" },
+  { id:"S-04", pets:["TEE","SYN","DP"], label:"TEE + SYN + DP", desc:"Attested DP-trained synthetic data generation" },
+];
+
+const ARTEFACTS_BY_PRIMITIVE = {
+  DP:  ["Privacy accountant (epsilon, delta, composition)", "Parameter manifest (noise mechanism, clipping norm, sensitivity)", "Release log"],
+  MPC: ["Protocol specification", "Adversary model declaration", "Implementation audit", "Communication benchmark"],
+  HE:  ["Parameter set and security level", "Precision/approximation bounds", "Benchmark suite"],
+  ZKP: ["Circuit definition and verification keys", "Setup transcript (or transparent-setup declaration)", "Circuit audit (under-constraint check)"],
+  SYN: ["Disclosure-risk evaluation (membership inference, linkage)", "Utility benchmark", "Attack-based audit (e.g. TAPAS)"],
+  FL:  ["Training protocol specification", "Aggregation rules", "Convergence and robustness reports", "Audit logs"],
+  TEE: ["Attestation report and enclave measurement", "Dependency manifest", "Side-channel mitigation declaration", "Key management audit"],
+  TRE: ["Access audit logs and accreditation records", "Output checking workflow and clearance decisions", "Safe outputs policy"],
+};
+
+const REG_POINTERS = {
+  "UK GDPR":  ["NIST SP 800-226 (DP evaluation)", "ICO PETs Guidance 2023", "ICO Anonymisation Code 2022", "Art. 25 — data protection by design", "Art. 35 — DPIA required"],
+  "EU GDPR":  ["NIST SP 800-226 (DP evaluation)", "EDPB PETs recommendations", "Art. 25 — data protection by design", "Art. 35 — DPIA required"],
+  "HIPAA":    ["HIPAA Safe Harbor de-identification", "Expert Determination method", "NIST SP 800-226 (DP evaluation)", "HHS Guidance on de-identification"],
+  "CCPA":     ["California AG enforcement guidance", "NIST Privacy Framework 1.0"],
+  "":         ["NIST Privacy Framework 1.0", "OECD PETs Report 2023", "ISO/IEC 20889:2018"],
+};
+
+const RULES = [
+  {
+    id:"IFACE-001", name:"FL update leakage — no output protection",
+    severity:"AMBER",
+    test: c => hasPrim(c,"FL") && !hasPrim(c,"DP") && !hasPrim(c,"MPC"),
+    finding:"FL is present but neither DP nor MPC are in the stack. The coordinator may observe individual update information. Consider P-01 (FL+DP), P-02 (FL+MPC), or S-03 (FL+MPC+DP).",
+    refs:["Zhu et al. (2019) — Deep Leakage from Gradients"]
+  },
+  {
+    id:"IFACE-002", name:"TEE output — no formal disclosure bound",
+    severity:"AMBER",
+    test: c => hasPrim(c,"TEE") && !hasPrim(c,"DP") && !hasPrim(c,"ZKP"),
+    finding:"TEE is present but no formal output disclosure control (DP or ZKP). TEE protects intermediate state only — outputs may still reveal individual records. Consider P-04 (TEE+DP) or P-06 (TEE+ZKP).",
+    refs:["Explorer T2 — P-04, P-06"]
+  },
+  {
+    id:"IFACE-003", name:"SYN — no formal privacy guarantee",
+    severity:"RED",
+    test: c => hasPrim(c,"SYN") && !hasPrim(c,"DP"),
+    finding:"SYN is present without DP coupling. Synthetic data alone does not guarantee privacy (Stadler et al. 2022). Add DP coupling (P-08) or document a completed membership inference audit.",
+    refs:["Stadler et al. (2022) — Synthetic data anonymisation groundhog day","Houssiau et al. (2022) — TAPAS"]
+  },
+  {
+    id:"COMP-001", name:"DP accounting — composition not documented",
+    severity:"RED",
+    test: c => hasPrim(c,"DP"),
+    finding:"DP is present. Ensure a privacy accountant tracking composition across queries/rounds is recorded as a required artefact. Naive composition inflates total epsilon.",
+    refs:["Kairouz et al. (2015) — composition theorem","NIST SP 800-226 (Draft)"]
+  },
+  {
+    id:"COMP-002", name:"FL + DP without secure aggregation",
+    severity:"AMBER",
+    test: c => hasPrim(c,"FL") && hasPrim(c,"DP") && !hasPrim(c,"MPC"),
+    finding:"FL + DP without MPC secure aggregation. If the coordinator is untrusted, individual DP-noised updates are visible before summation. Consider S-03 (FL+MPC+DP) if coordinator trust is limited.",
+    refs:["Bonawitz et al. (2017)","Explorer T3 — S-03"]
+  },
+  {
+    id:"ASSUR-001", name:"TEE — attestation report needed",
+    severity:"RED",
+    test: c => hasPrim(c,"TEE"),
+    finding:"TEE is present. Ensure an attestation report artefact is documented. Attestation is the primary assurance mechanism for hardware isolation — without it the claim is unverified.",
+    refs:["Costan & Devadas (2016) — Intel SGX explained"]
+  },
+  {
+    id:"ASSUR-002", name:"SYN — disclosure risk evaluation needed",
+    severity:"RED",
+    test: c => hasPrim(c,"SYN"),
+    finding:"SYN is present. A disclosure-risk evaluation (membership inference, linkage tests) is required for any synthetic data privacy claim. Document this as a required artefact.",
+    refs:["ICO Anonymisation Code of Practice (2022)","Explorer T1 — SYN core artefacts"]
+  },
+  {
+    id:"GOV-001", name:"No audit log declared",
+    severity:"AMBER",
+    test: c => !c.auditLog && c.scale !== "pilot",
+    finding:"No audit log declared for this non-pilot deployment. Access decisions and output releases should be logged. Enable the audit log control.",
+    refs:["NIST Privacy Framework 1.0 — GOVERN function"]
+  },
+  {
+    id:"GOV-002", name:"TRE — no output checking mechanism",
+    severity:"RED",
+    test: c => hasPrim(c,"TRE") && c.outputControl === "none",
+    finding:"TRE is present but output control is set to none. Output checking (human, automated, or both) is a core TRE assurance mechanism. This is a RED finding.",
+    refs:["ONS Safe Outputs guidance (2024)","Five Safes Framework"]
+  },
+  {
+    id:"SECTOR-001", name:"Healthcare — TRE governance or utility evidence expected",
+    severity:"AMBER",
+    test: c => c.sector === "healthcare" && !hasPrim(c,"TRE"),
+    finding:"Healthcare deployment without TRE governance layer. Clinical deployments typically require institutional approval processes and domain-specific utility evidence alongside technical PET artefacts.",
+    refs:["Explorer T4 — healthcare sector"]
+  },
+  {
+    id:"SECTOR-002", name:"Public sector — TRE governance expected",
+    severity:"AMBER",
+    test: c => c.sector === "public_sector" && !hasPrim(c,"TRE"),
+    finding:"Public sector deployment without TRE governance. Formal output control and access audit mechanisms are expected assurance requirements in this sector.",
+    refs:["Explorer T4 — public sector","ONS (2024)"]
+  },
+  {
+    id:"REG-001", name:"NIST SP 800-226 alignment (DP deployments)",
+    severity:"GREEN",
+    test: c => hasPrim(c,"DP"),
+    finding:"DP is present. Document alignment with NIST SP 800-226 (Draft) — the primary US/international reference for DP parameter governance and legal sufficiency.",
+    refs:["NIST SP 800-226 — Guidelines for Evaluating Differential Privacy Guarantees (Draft 2023)"]
+  },
+  {
+    id:"REG-002", name:"ICO PETs guidance (UK deployments)",
+    severity:"GREEN",
+    test: c => c.regulation === "UK GDPR",
+    finding:"UK GDPR applies. Document alignment with ICO PETs Guidance (2023) and ICO Anonymisation Code (2022).",
+    refs:["ICO PETs Guidance (2023)","ICO Anonymisation Code of Practice (2022)"]
+  },
+  {
+    id:"REG-003", name:"GDPR Art. 25 — data protection by design",
+    severity:"INFO",
+    test: c => c.regulation === "UK GDPR" || c.regulation === "EU GDPR",
+    finding:"This Privacy Card can serve as an Art. 25 technical documentation artefact. Ensure it is referenced in the DPIA and data protection register.",
+    refs:["GDPR Art. 25","EDPB Guidelines 4/2019"]
+  },
+];
+
+// ─── State ──────────────────────────────────────────────────────────────────
+
+let selected = new Set();
+let lastReport = null;
+
+function hasPrim(ctx, id) { return ctx.prims.includes(id); }
+
+function getContext() {
+  return {
+    prims: [...selected],
+    sector: document.getElementById("sectorSel").value,
+    scale: document.getElementById("scaleSel").value,
+    outputControl: document.getElementById("outputCtrl").value,
+    auditLog: document.getElementById("auditLog").value === "true",
+    regulation: document.getElementById("regulationSel").value,
+  };
+}
+
+// ─── UI setup ────────────────────────────────────────────────────────────────
+
+const blockGrid = document.getElementById("blockGrid");
+
+PRIMITIVES.forEach(p => {
+  const el = document.createElement("div");
+  el.className = "block";
+  el.dataset.id = p.id;
+  el.innerHTML = `
+    <div class="dot dot-${p.family === "algorithmic" ? "algo" : "arch"}"></div>
+    <div>
+      <div class="name">${p.id}</div>
+    </div>
+    <div class="family">${p.family}</div>
+  `;
+  el.title = p.name;
+  el.addEventListener("click", () => {
+    if (selected.has(p.id)) { selected.delete(p.id); el.classList.remove("active"); }
+    else { selected.add(p.id); el.classList.add("active"); }
+    updateStackSummary();
+    updateArtefactPrompts();
+    updateExplorerMatch();
+  });
+  blockGrid.appendChild(el);
+});
+
+// ─── Stack summary ───────────────────────────────────────────────────────────
+
+function updateStackSummary() {
+  const pills = document.getElementById("stackPills");
+  if (selected.size === 0) {
+    pills.innerHTML = '<span class="pill pill-none">No primitives selected</span>';
+    return;
+  }
+  pills.innerHTML = [...selected].map(id => {
+    const p = PRIMITIVES.find(x => x.id === id);
+    const cls = p.family === "algorithmic" ? "pill-algo" : "pill-arch";
+    return `<span class="pill ${cls}" title="${p.name}">${id}</span>`;
+  }).join("");
+}
+
+// ─── Explorer match ──────────────────────────────────────────────────────────
+
+function updateExplorerMatch() {
+  const el = document.getElementById("matchContent");
+  if (selected.size === 0) { el.innerHTML = '<span class="empty-state">Select primitives to see T1–T3 matches.</span>'; return; }
+
+  const matchedPairs = PAIRINGS.filter(p => p.pets.every(id => selected.has(id)));
+  const matchedStacks = STACKS.filter(s => s.pets.every(id => selected.has(id)));
+
+  let html = "";
+  if (matchedStacks.length) {
+    html += '<div style="margin-bottom:8px"><span style="font-size:0.7rem;color:var(--text-dim)">T3 Stack matches:</span><br>';
+    matchedStacks.forEach(s => { html += `<span class="match-badge">${s.id}</span>`; });
+    matchedStacks.forEach(s => { html += `<div class="match-text">${s.id}: ${s.desc}</div>`; });
+    html += "</div>";
+  }
+  if (matchedPairs.length) {
+    html += '<div><span style="font-size:0.7rem;color:var(--text-dim)">T2 Pairing matches:</span><br>';
+    matchedPairs.forEach(p => { html += `<span class="match-badge">${p.id}</span>`; });
+    matchedPairs.forEach(p => { html += `<div class="match-text">${p.id}: ${p.desc}</div>`; });
+    html += "</div>";
+  }
+  if (!matchedPairs.length && !matchedStacks.length) {
+    html = '<span class="match-text">No direct T2/T3 match — this combination is not in the explorer tables. Check T1 entries for individual primitive maturity.</span>';
+  }
+  el.innerHTML = html;
+}
+
+// ─── Artefact prompts ────────────────────────────────────────────────────────
+
+function updateArtefactPrompts() {
+  const el = document.getElementById("artefactChecks");
+  if (selected.size === 0) {
+    el.innerHTML = '<span style="color:var(--text-dim);font-size:0.75rem">Select primitives to see artefact prompts.</span>';
+    return;
+  }
+  const all = [...selected].flatMap(id => (ARTEFACTS_BY_PRIMITIVE[id] || []).map(a => ({ id, a })));
+  el.innerHTML = all.map(({ id, a }) => `
+    <div style="display:flex;align-items:flex-start;gap:6px;padding:3px 0">
+      <span style="color:var(--accent);font-size:0.7rem;flex-shrink:0">${id}</span>
+      <span style="font-size:0.72rem;color:var(--text-dim);line-height:1.4">${a}</span>
+    </div>`).join("");
+}
+
+// ─── Evaluate ────────────────────────────────────────────────────────────────
+
+document.getElementById("runBtn").addEventListener("click", runEvaluation);
+
+function runEvaluation() {
+  const ctx = getContext();
+  const triggered = RULES.filter(r => r.test(ctx));
+
+  const sevOrder = { RED:3, AMBER:2, GREEN:1, INFO:0 };
+  const worst = triggered.reduce((w, r) => Math.max(w, sevOrder[r.severity] || 0), 0);
+  const overallRating = worst >= 3 ? "RED" : worst >= 2 ? "AMBER" : worst >= 1 ? "GREEN" : "GREEN";
+
+  // Banner
+  const banner = document.getElementById("ratingBanner");
+  const emoji = { RED:"🔴", AMBER:"🟡", GREEN:"🟢" }[overallRating];
+  const subtitle = {
+    RED: `${triggered.filter(r=>r.severity==="RED").length} RED finding(s) — high-priority gaps requiring attention`,
+    AMBER: `${triggered.filter(r=>r.severity==="AMBER").length} AMBER finding(s) — notable gaps; no RED findings`,
+    GREEN: triggered.length > 0 ? `${triggered.filter(r=>r.severity==="GREEN").length} GREEN/INFO finding(s) — no critical gaps` : "No findings — all evaluated rules passed",
+  }[overallRating];
+  banner.className = `rating-${overallRating.toLowerCase()}`;
+  banner.innerHTML = `<div class="rating-label">${emoji} ${overallRating}</div><div class="rating-sub">${subtitle}</div>`;
+  banner.style.display = "block";
+
+  // Findings
+  const findingsEl = document.getElementById("findings");
+  if (triggered.length === 0) {
+    findingsEl.innerHTML = '<div class="empty-state">No rule findings for this configuration.</div>';
+  } else {
+    const order = ["RED","AMBER","GREEN","INFO"];
+    const sorted = [...triggered].sort((a,b) => order.indexOf(a.severity) - order.indexOf(b.severity));
+    findingsEl.innerHTML = sorted.map(r => {
+      const sev = r.severity.toLowerCase();
+      return `<div class="finding-card sev-${sev}">
+        <div class="finding-header">
+          <span class="sev-badge ${sev}">${r.severity}</span>
+          <span class="finding-id">${r.id}</span>
+          <span class="finding-name">${r.name}</span>
+        </div>
+        <div class="finding-text">${r.finding}</div>
+        ${r.refs && r.refs.length ? `<div class="finding-refs"><span>Refs: ${r.refs.join(" · ")}</span></div>` : ""}
+      </div>`;
+    }).join("");
+  }
+
+  // Artefact checklist
+  const artefactSection = document.getElementById("artefactSection");
+  const artefactList = document.getElementById("artefactList");
+  if (selected.size > 0) {
+    const all = [...selected].flatMap(id => (ARTEFACTS_BY_PRIMITIVE[id] || []).map(a => ({ id, a })));
+    artefactList.innerHTML = all.map(({ id, a }) => `
+      <div class="artefact-row">
+        <span class="artefact-icon">☐</span>
+        <div>
+          <span style="font-size:0.68rem;color:var(--accent);font-family:var(--mono)">${id}</span>
+          <span style="margin-left:6px">${a}</span>
+        </div>
+      </div>`).join("");
+    artefactSection.style.display = "block";
+  } else {
+    artefactSection.style.display = "none";
+  }
+
+  // Governance + regulatory
+  const infoGrid = document.getElementById("infoGrid");
+  infoGrid.style.display = "grid";
+
+  const govRows = document.getElementById("govRows");
+  govRows.innerHTML = [
+    ["Sector", ctx.sector || "—"],
+    ["Scale", ctx.scale],
+    ["Output control", ctx.outputControl],
+    ["Audit log", ctx.auditLog ? "Yes" : "No"],
+  ].map(([k,v]) => `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`).join("");
+
+  const regRows = document.getElementById("regRows");
+  const pointers = REG_POINTERS[ctx.regulation] || REG_POINTERS[""];
+  regRows.innerHTML = pointers.map(p => `<div class="artefact-row" style="padding:4px 0"><span style="font-size:0.75rem">${p}</span></div>`).join("");
+
+  // Export button
+  const exportBtn = document.getElementById("exportBtn");
+  exportBtn.style.display = "inline-block";
+
+  // Save report state
+  lastReport = { ctx, triggered, overallRating };
+
+  // Scroll to banner
+  banner.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+
+// ─── Export ──────────────────────────────────────────────────────────────────
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  if (!lastReport) return;
+  const { ctx } = lastReport;
+  const now = new Date().toISOString().slice(0,10);
+  const card = {
+    card_id: `CARD-sandbox-export-${now}`,
+    schema_version: "1.0",
+    title: "Sandbox export",
+    description: "Generated by YAPS interactive sandbox",
+    created: now,
+    status: "draft",
+    architecture_pattern: {},
+    pet_components: [...ctx.prims].map(id => ({
+      primitive_id: id,
+      role: "— fill in",
+      implementation_status: "planned"
+    })),
+    trust_model: { summary: "— fill in", threat_actors: [] },
+    assurance_targets: {
+      required_artefacts: [...ctx.prims].flatMap(id =>
+        (ARTEFACTS_BY_PRIMITIVE[id]||[]).map(a => ({ artefact: a, status: "planned" }))
+      ),
+      current_maturity_stage: 1
+    },
+    governance_controls: {
+      output_control: ctx.outputControl,
+      audit_log: ctx.auditLog
+    },
+    deployment_context: {
+      sector_ref: ctx.sector || "— fill in",
+      scale: ctx.scale
+    },
+    regulatory_context: ctx.regulation ? {
+      applicable_regulations: [{ regulation: ctx.regulation, jurisdiction: "—", alignment_status: "not-assessed" }]
+    } : {}
+  };
+
+  // Explorer cross-references
+  const matchedStack = STACKS.find(s => s.pets.every(id => ctx.prims.includes(id)) && ctx.prims.length === s.pets.length);
+  const matchedPair = PAIRINGS.find(p => p.pets.every(id => ctx.prims.includes(id)) && ctx.prims.length === p.pets.length);
+  if (matchedStack) card.architecture_pattern.stack_ref = matchedStack.id;
+  else if (matchedPair) card.architecture_pattern.pairing_ref = matchedPair.id;
+
+  const blob = new Blob([JSON.stringify(card, null, 2)], { type:"application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `yaps_card_${now}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// ─── Initial render ──────────────────────────────────────────────────────────
+updateStackSummary();
+updateArtefactPrompts();
+updateExplorerMatch();
+</script>
+</body>
+</html>

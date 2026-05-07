@@ -1,0 +1,143 @@
+{
+  "_instructions": "Copy this file, remove this field, and fill in the fields marked REQUIRED. Fields marked OPTIONAL may be omitted if not applicable. Cross-references: primitive_id must match T1 IDs (DP/MPC/HE/ZKP/SYN/FL/TEE/TRE); pairing_ref must match T2 IDs (P-01 to P-08); stack_ref must match T3 IDs (S-01 to S-04); sector_ref must match T4 IDs.",
+
+  "card_id": "CARD-<slug>-<YYYYMM>",
+  "schema_version": "1.0",
+  "title": "REQUIRED — short descriptive name",
+  "description": "OPTIONAL — one or two sentences",
+  "created": "REQUIRED — YYYY-MM-DD",
+  "last_updated": "YYYY-MM-DD",
+  "status": "draft",
+  "authors": ["OPTIONAL"],
+
+  "architecture_pattern": {
+    "pairing_ref": "OPTIONAL — T2 Pair ID e.g. P-01",
+    "stack_ref": "OPTIONAL — T3 Stack ID e.g. S-01",
+    "custom": false,
+    "custom_rationale": "OPTIONAL — required if custom=true"
+  },
+
+  "pet_components": [
+    {
+      "_comment": "Add one object per PET primitive. Remove _comment field.",
+      "primitive_id": "REQUIRED — one of DP/MPC/HE/ZKP/SYN/FL/TEE/TRE",
+      "role": "REQUIRED — what this primitive contributes to the architecture",
+      "implementation_status": "REQUIRED — one of: planned / in-development / deployed / deprecated",
+      "tooling": [
+        {
+          "name": "OPTIONAL — tool name",
+          "version": "OPTIONAL",
+          "url": "OPTIONAL",
+          "licence": "OPTIONAL"
+        }
+      ],
+      "parameters": {
+        "OPTIONAL": "key parameters relevant to assurance — e.g. epsilon/delta for DP, vendor for TEE"
+      },
+      "parameter_notes": "OPTIONAL — narrative on parameter choices or governance gaps"
+    }
+  ],
+
+  "trust_model": {
+    "summary": "REQUIRED — narrative description of the overall trust model",
+    "threat_actors": [
+      {
+        "actor": "REQUIRED — who",
+        "capability": "REQUIRED — what they can observe or do",
+        "mitigated_by": "REQUIRED — which PET component(s) address this",
+        "residual_risk": "OPTIONAL — what remains after mitigation"
+      }
+    ],
+    "out_of_scope_threats": ["OPTIONAL — threats explicitly not covered"]
+  },
+
+  "assurance_targets": {
+    "required_artefacts": [
+      {
+        "artefact": "REQUIRED — artefact name (e.g. 'privacy accountant and parameter manifest')",
+        "status": "REQUIRED — one of: exists / planned / not-applicable / missing",
+        "location": "OPTIONAL — where the artefact can be found",
+        "notes": "OPTIONAL"
+      }
+    ],
+    "current_maturity_stage": 0,
+    "maturity_justification": "OPTIONAL — why this stage was assigned"
+  },
+
+  "governance_controls": {
+    "output_control": "OPTIONAL — one of: human-review / automated-statistical / both / none / planned",
+    "access_control": "OPTIONAL",
+    "change_control": "OPTIONAL",
+    "audit_log": false,
+    "dpia_reference": "OPTIONAL",
+    "frameworks_applied": [
+      {
+        "framework": "OPTIONAL — e.g. Five Safes / NIST Privacy Framework 1.0 / ISO/IEC 27701",
+        "alignment_level": "OPTIONAL — one of: full / partial / aspirational / not-assessed",
+        "notes": "OPTIONAL"
+      }
+    ]
+  },
+
+  "deployment_context": {
+    "sector_ref": "REQUIRED — one of: public_sector / healthcare / finance / technology / web3",
+    "sub_sector": "OPTIONAL",
+    "data_subjects_jurisdiction": ["OPTIONAL — e.g. UK, EU, US"],
+    "scale": "OPTIONAL — one of: pilot / limited-production / production / platform-scale"
+  },
+
+  "regulatory_context": {
+    "applicable_regulations": [
+      {
+        "regulation": "OPTIONAL — e.g. UK GDPR / EU GDPR / HIPAA / CCPA",
+        "jurisdiction": "OPTIONAL",
+        "relevant_articles": ["OPTIONAL"],
+        "alignment_status": "OPTIONAL — one of: aligned / partial / gap-identified / not-assessed",
+        "gap_notes": "OPTIONAL"
+      }
+    ],
+    "standards_alignment": [
+      {
+        "standard": "OPTIONAL — e.g. NIST SP 800-226 / ICO PETs Guidance 2023 / ISO/IEC 20889:2018",
+        "alignment_level": "OPTIONAL — one of: full / partial / aspirational / not-assessed",
+        "notes": "OPTIONAL"
+      }
+    ]
+  },
+
+  "data_profile_ref": "OPTIONAL — path to data_profile.schema.json document",
+
+  "tooling_candidates": [
+    {
+      "name": "OPTIONAL",
+      "url": "OPTIONAL",
+      "primitive_ids": ["OPTIONAL — T1 IDs this tool supports"],
+      "maturity": "OPTIONAL — one of: experimental / production / deprecated",
+      "notes": "OPTIONAL"
+    }
+  ],
+
+  "residual_risks": [
+    {
+      "risk": "OPTIONAL",
+      "severity": "OPTIONAL — one of: low / medium / high / critical",
+      "mitigation_path": "OPTIONAL"
+    }
+  ],
+
+  "utility_evidence": {
+    "primary_metric": "OPTIONAL — e.g. AUROC, F1, accuracy",
+    "baseline_value": 0,
+    "pet_value": 0,
+    "unit": "OPTIONAL",
+    "notes": "OPTIONAL"
+  },
+
+  "change_log": [
+    {
+      "date": "YYYY-MM-DD",
+      "change": "Initial card created",
+      "author": "OPTIONAL"
+    }
+  ]
+}

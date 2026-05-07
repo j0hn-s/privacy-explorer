@@ -1,0 +1,447 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/privacy-explorer/yaps/schemas/privacy_card.schema.json",
+  "title": "Privacy Card",
+  "description": "A structured artefact capturing the privacy architecture of a PET-protected system, dataset, model, pipeline, or query service. All explorer cross-references (primitive_id, pairing_ref, stack_ref, sector_ref) must match IDs in the T1–T4 tables.",
+  "type": "object",
+  "required": [
+    "card_id",
+    "schema_version",
+    "title",
+    "created",
+    "status",
+    "pet_components",
+    "trust_model",
+    "assurance_targets",
+    "deployment_context"
+  ],
+  "additionalProperties": false,
+  "properties": {
+
+    "card_id": {
+      "type": "string",
+      "description": "Unique identifier for this card. Suggested format: CARD-{slug}-{YYYYMM}.",
+      "examples": ["CARD-healthcare-fl-tee-dp-202605"]
+    },
+
+    "schema_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version this card was written against."
+    },
+
+    "title": {
+      "type": "string",
+      "description": "Short human-readable name for this privacy architecture."
+    },
+
+    "description": {
+      "type": "string",
+      "description": "One or two sentences describing what this card represents."
+    },
+
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date this card was first created."
+    },
+
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date this card was last materially revised."
+    },
+
+    "status": {
+      "type": "string",
+      "enum": ["draft", "review", "approved", "deprecated"],
+      "description": "Lifecycle status of this card."
+    },
+
+    "authors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Individuals or teams responsible for this card."
+    },
+
+    "architecture_pattern": {
+      "type": "object",
+      "description": "References back to the T2/T3 explorer tables for the combination pattern this card instantiates.",
+      "additionalProperties": false,
+      "properties": {
+        "pairing_ref": {
+          "type": "string",
+          "description": "T2 Pair ID (e.g. P-01). Use if this card represents a two-PET combination.",
+          "pattern": "^P-[0-9]{2}$"
+        },
+        "stack_ref": {
+          "type": "string",
+          "description": "T3 Stack ID (e.g. S-01). Use if this card represents a three-PET stack.",
+          "pattern": "^S-[0-9]{2}$"
+        },
+        "custom": {
+          "type": "boolean",
+          "description": "Set true if this card represents a combination not yet registered in T2/T3.",
+          "default": false
+        },
+        "custom_rationale": {
+          "type": "string",
+          "description": "If custom=true, explain why this combination is not in the explorer tables."
+        }
+      }
+    },
+
+    "pet_components": {
+      "type": "array",
+      "description": "The PET primitives present in this architecture, in order of application.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["primitive_id", "role", "implementation_status"],
+        "additionalProperties": false,
+        "properties": {
+          "primitive_id": {
+            "type": "string",
+            "description": "T1 primitive ID.",
+            "enum": ["DP", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE"]
+          },
+          "role": {
+            "type": "string",
+            "description": "What this primitive contributes to the overall architecture.",
+            "examples": [
+              "local data retention — raw data never leaves client devices",
+              "hardware isolation of aggregation server",
+              "formal output disclosure bound"
+            ]
+          },
+          "implementation_status": {
+            "type": "string",
+            "enum": ["planned", "in-development", "deployed", "deprecated"],
+            "description": "Current implementation status of this component."
+          },
+          "tooling": {
+            "type": "array",
+            "description": "Specific frameworks, libraries, or products implementing this primitive.",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "version": { "type": "string" },
+                "url": { "type": "string", "format": "uri" },
+                "licence": { "type": "string" }
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Key configuration parameters for this primitive. Schema is open-ended; document what is material for assurance.",
+            "examples": [
+              { "epsilon": 1.0, "delta": 1e-5, "noise_mechanism": "Gaussian", "clipping_norm": 1.0 },
+              { "vendor": "AWS Nitro Enclaves", "enclave_measurement": "sha384:abc123...", "memory_mb": 4096 }
+            ]
+          },
+          "parameter_notes": {
+            "type": "string",
+            "description": "Narrative on parameter choices, constraints, or known governance gaps."
+          }
+        }
+      }
+    },
+
+    "trust_model": {
+      "type": "object",
+      "description": "Who is trusted, what they are trusted with, and where trust breaks down.",
+      "required": ["summary", "threat_actors"],
+      "additionalProperties": false,
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "Narrative description of the overall trust model."
+        },
+        "threat_actors": {
+          "type": "array",
+          "description": "Entities considered in the threat model.",
+          "items": {
+            "type": "object",
+            "required": ["actor", "capability", "mitigated_by"],
+            "additionalProperties": false,
+            "properties": {
+              "actor": {
+                "type": "string",
+                "examples": ["curious aggregation server", "cloud infrastructure operator", "external analyst with auxiliary data"]
+              },
+              "capability": {
+                "type": "string",
+                "description": "What this actor can observe or do."
+              },
+              "mitigated_by": {
+                "type": "string",
+                "description": "Which PET component(s) address this threat."
+              },
+              "residual_risk": {
+                "type": "string",
+                "description": "What remains after mitigation."
+              }
+            }
+          }
+        },
+        "out_of_scope_threats": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Threats explicitly not covered by this architecture."
+        }
+      }
+    },
+
+    "assurance_targets": {
+      "type": "object",
+      "description": "The assurance artefacts this deployment commits to producing. Each field maps to the artefact categories in T1–T3.",
+      "additionalProperties": false,
+      "properties": {
+        "required_artefacts": {
+          "type": "array",
+          "description": "Artefacts that must exist for this architecture to be considered deployment-ready.",
+          "items": {
+            "type": "object",
+            "required": ["artefact", "status"],
+            "additionalProperties": false,
+            "properties": {
+              "artefact": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": ["exists", "planned", "not-applicable", "missing"]
+              },
+              "location": {
+                "type": "string",
+                "description": "Where this artefact can be found (URL, file path, or reference)."
+              },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "current_maturity_stage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Self-assessed maturity stage (1–4) per the explorer rubric."
+        },
+        "maturity_justification": {
+          "type": "string",
+          "description": "Why this maturity stage was assigned."
+        }
+      }
+    },
+
+    "governance_controls": {
+      "type": "object",
+      "description": "Procedural and institutional controls in place or planned.",
+      "additionalProperties": false,
+      "properties": {
+        "output_control": {
+          "type": "string",
+          "enum": ["human-review", "automated-statistical", "both", "none", "planned"],
+          "description": "How outputs are checked before release."
+        },
+        "access_control": {
+          "type": "string",
+          "description": "How access to the system or data is controlled."
+        },
+        "change_control": {
+          "type": "string",
+          "description": "How changes to the architecture are reviewed and approved."
+        },
+        "audit_log": {
+          "type": "boolean",
+          "description": "Whether an audit log of access and release decisions is maintained."
+        },
+        "dpia_reference": {
+          "type": "string",
+          "description": "Reference to a completed Data Protection Impact Assessment, if applicable."
+        },
+        "frameworks_applied": {
+          "type": "array",
+          "description": "Governance frameworks this architecture claims alignment with.",
+          "items": {
+            "type": "object",
+            "required": ["framework", "alignment_level"],
+            "additionalProperties": false,
+            "properties": {
+              "framework": {
+                "type": "string",
+                "examples": ["Five Safes", "NIST Privacy Framework 1.0", "ICO Anonymisation Code", "ISO/IEC 27701"]
+              },
+              "alignment_level": {
+                "type": "string",
+                "enum": ["full", "partial", "aspirational", "not-assessed"]
+              },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "deployment_context": {
+      "type": "object",
+      "description": "The operational and regulatory context in which this architecture is deployed.",
+      "required": ["sector_ref"],
+      "additionalProperties": false,
+      "properties": {
+        "sector_ref": {
+          "type": "string",
+          "description": "T4 sector ID.",
+          "enum": ["public_sector", "healthcare", "finance", "technology", "web3"]
+        },
+        "sub_sector": {
+          "type": "string",
+          "description": "More specific sector context if the T4 entry is too coarse.",
+          "examples": ["cross-institutional oncology research", "consumer telemetry", "credit scoring"]
+        },
+        "data_subjects_jurisdiction": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Jurisdictions whose data protection law applies.",
+          "examples": [["UK", "EU"], ["US-HIPAA"], ["UK", "EU", "US"]]
+        },
+        "scale": {
+          "type": "string",
+          "enum": ["pilot", "limited-production", "production", "platform-scale"],
+          "description": "Scale of deployment."
+        }
+      }
+    },
+
+    "regulatory_context": {
+      "type": "object",
+      "description": "Regulatory requirements and alignment gaps for this deployment.",
+      "additionalProperties": false,
+      "properties": {
+        "applicable_regulations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["regulation", "jurisdiction"],
+            "additionalProperties": false,
+            "properties": {
+              "regulation": {
+                "type": "string",
+                "examples": ["UK GDPR", "EU GDPR", "HIPAA", "CCPA", "NIS2"]
+              },
+              "jurisdiction": { "type": "string" },
+              "relevant_articles": {
+                "type": "array",
+                "items": { "type": "string" },
+                "examples": [["Art. 25 (data protection by design)", "Art. 35 (DPIA)"]]
+              },
+              "alignment_status": {
+                "type": "string",
+                "enum": ["aligned", "partial", "gap-identified", "not-assessed"]
+              },
+              "gap_notes": { "type": "string" }
+            }
+          }
+        },
+        "standards_alignment": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["standard"],
+            "additionalProperties": false,
+            "properties": {
+              "standard": {
+                "type": "string",
+                "examples": ["NIST SP 800-226", "ISO/IEC 20889:2018", "ICO PETs Guidance 2023"]
+              },
+              "alignment_level": {
+                "type": "string",
+                "enum": ["full", "partial", "aspirational", "not-assessed"]
+              },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "data_profile_ref": {
+      "type": "string",
+      "description": "Path or URI to a Data Profile document (data_profile.schema.json) associated with this card."
+    },
+
+    "tooling_candidates": {
+      "type": "array",
+      "description": "Open-source or commercial tools evaluated or in use for this architecture. Community contributions welcome.",
+      "items": {
+        "type": "object",
+        "required": ["name", "primitive_ids"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "url": { "type": "string", "format": "uri" },
+          "primitive_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Which T1 primitives this tool implements or supports."
+          },
+          "maturity": {
+            "type": "string",
+            "enum": ["experimental", "production", "deprecated"]
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+
+    "residual_risks": {
+      "type": "array",
+      "description": "Known risks not addressed by the current architecture. Each entry should be actionable.",
+      "items": {
+        "type": "object",
+        "required": ["risk", "severity"],
+        "additionalProperties": false,
+        "properties": {
+          "risk": { "type": "string" },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "mitigation_path": {
+            "type": "string",
+            "description": "What would reduce this risk."
+          }
+        }
+      }
+    },
+
+    "utility_evidence": {
+      "type": "object",
+      "description": "Evidence that the architecture preserves sufficient utility for its intended purpose.",
+      "additionalProperties": false,
+      "properties": {
+        "primary_metric": { "type": "string" },
+        "baseline_value": { "type": "number" },
+        "pet_value": { "type": "number" },
+        "unit": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "change_log": {
+      "type": "array",
+      "description": "Significant changes to this card over time.",
+      "items": {
+        "type": "object",
+        "required": ["date", "change"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "change": { "type": "string" },
+          "author": { "type": "string" }
+        }
+      }
+    }
+
+  }
+}

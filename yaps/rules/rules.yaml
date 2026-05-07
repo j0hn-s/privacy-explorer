@@ -1,0 +1,479 @@
+# YAPS Rule Set — v1.0
+#
+# Each rule is evaluated against a Privacy Card JSON document.
+# Rules are grouped by category prefix:
+#
+#   IFACE-  Interface risks — what crosses component boundaries
+#   COMP-   Composition risks — how PETs interact and where accounting gaps arise
+#   ASSUR-  Assurance artefact completeness
+#   GOV-    Governance and procedural controls
+#   SECTOR- Sector-specific requirements
+#   REG-    Regulatory alignment pointers
+#
+# Severity levels:
+#   RED    — high-priority gap; typically blocks deployment readiness
+#   AMBER  — notable gap; warrants attention before production
+#   GREEN  — informational; best-practice recommendation
+#   INFO   — advisory; contextual note, does not affect overall rating
+#
+# condition_logic: Python-like boolean expression evaluated against the card JSON.
+# Supported accessors (all return False / empty list if the field is absent):
+#   has_primitive(id)                  — pet_components contains a primitive with this id
+#   primitive_status(id)               — implementation_status of a primitive
+#   has_pairing(id)                    — architecture_pattern.pairing_ref == id
+#   has_stack(id)                      — architecture_pattern.stack_ref == id
+#   sector_is(id)                      — deployment_context.sector_ref == id
+#   scale_is(s)                        — deployment_context.scale == s
+#   artefact_status(name_fragment)     — status of a required_artefact whose name contains fragment
+#   governance_has(field, value)       — governance_controls field equals value
+#   has_regulation(reg)                — regulatory_context.applicable_regulations contains reg
+#   missing_artefact(name_fragment)    — artefact_status(fragment) in ["missing", "planned", None]
+#   maturity_stage()                   — assurance_targets.current_maturity_stage (int)
+#   output_control_is(value)           — governance_controls.output_control == value
+#   audit_log_present()                — governance_controls.audit_log == true
+#
+# Rules are evaluated in document order. The engine halts at the first RED finding
+# unless --full-report is passed.
+
+schema_version: "1.0"
+last_updated: "2026-05"
+
+rules:
+
+  # ─── INTERFACE RISKS ────────────────────────────────────────────────────────
+
+  - id: IFACE-001
+    name: "FL update leakage — no output protection"
+    category: IFACE
+    severity: AMBER
+    description: >
+      Federated Learning distributes training but model updates can leak individual
+      records via gradient inversion or membership inference. Without DP or MPC at
+      the aggregation step, no formal bound exists on what the coordinator learns
+      from individual updates.
+    condition_logic: "has_primitive('FL') and not has_primitive('DP') and not has_primitive('MPC')"
+    finding: >
+      FL is present but neither DP nor MPC (secure aggregation) are in the stack.
+      The aggregation coordinator may observe individual update information.
+      Consider adding DP (P-01), MPC secure aggregation (P-02), or both (S-03).
+    references:
+      - "Zhu et al. (2019) — Deep Leakage from Gradients"
+      - "Melis et al. (2019) — Exploiting unintended feature leakage"
+
+  - id: IFACE-002
+    name: "TEE output — no formal disclosure bound"
+    category: IFACE
+    severity: AMBER
+    description: >
+      A TEE provides hardware-enforced in-use confidentiality but does not constrain
+      what information is disclosed in outputs. Without DP at the release boundary,
+      query results or model outputs may leak individual-level information.
+    condition_logic: "has_primitive('TEE') and not has_primitive('DP') and not has_primitive('ZKP')"
+    finding: >
+      TEE is present but no formal output disclosure control (DP or ZKP) is in the
+      stack. TEE protects intermediate state only — outputs may still reveal individual
+      records. Consider pairing with DP (P-04) or ZKP (P-06).
+    references:
+      - "Explorer T2 — P-04 (TEE + DP)"
+      - "Explorer T2 — P-06 (TEE + ZKP)"
+
+  - id: IFACE-003
+    name: "SYN release — no formal privacy guarantee"
+    category: IFACE
+    severity: RED
+    description: >
+      Synthetic data provides no formal privacy guarantee by construction. Without
+      explicit coupling to DP training/release or a documented adversarial audit,
+      re-identification risk is underestimated in a significant proportion of
+      deployments.
+    condition_logic: "has_primitive('SYN') and not has_primitive('DP') and missing_artefact('membership inference')"
+    finding: >
+      SYN is present without DP coupling and without a membership inference audit.
+      Synthetic data alone does not guarantee privacy — this is a documented failure
+      mode (Stadler et al. 2022, Houssiau et al. 2022). Add DP coupling (P-08) or
+      document a completed membership inference audit.
+    references:
+      - "Stadler et al. (2022) — Synthetic data anonymisation groundhog day"
+      - "Houssiau et al. (2022) — TAPAS"
+      - "Explorer T2 — P-08 (SYN + DP)"
+
+  - id: IFACE-004
+    name: "MPC coordinator trust model undeclared"
+    category: IFACE
+    severity: AMBER
+    description: >
+      MPC security properties depend critically on whether the coordinator is modelled
+      as honest-but-curious or actively malicious. Without an explicit adversary model
+      declaration, the assurance claim is underspecified.
+    condition_logic: "has_primitive('MPC') and missing_artefact('adversary model')"
+    finding: >
+      MPC is present but no adversary model declaration artefact is recorded.
+      The trust guarantee of MPC differs substantially between honest-but-curious
+      and malicious adversary models. Document the assumed corruption model.
+    references:
+      - "Evans et al. (2018) — A pragmatic introduction to secure MPC"
+
+  - id: IFACE-005
+    name: "ZKP — trusted setup not documented"
+    category: IFACE
+    severity: AMBER
+    description: >
+      zk-SNARK systems require a trusted setup ceremony. If the toxic waste from
+      setup is not destroyed, the system is compromised. Transparent setups (STARKs)
+      avoid this but must be explicitly declared.
+    condition_logic: "has_primitive('ZKP') and missing_artefact('setup transcript')"
+    finding: >
+      ZKP is present but no trusted-setup transcript or transparent-setup declaration
+      is recorded. Document whether a trusted setup was used and if so provide the
+      ceremony transcript or multi-party setup evidence.
+    references:
+      - "Ben-Sasson et al. (2022)"
+
+  # ─── COMPOSITION RISKS ──────────────────────────────────────────────────────
+
+  - id: COMP-001
+    name: "DP accounting — multi-round composition not documented"
+    category: COMP
+    severity: RED
+    description: >
+      DP guarantees compose across queries and training rounds. Without explicit
+      composition accounting (advanced composition, RDP, or similar), the true
+      privacy loss over the deployment lifetime is unknown and may substantially
+      exceed the per-query epsilon claimed.
+    condition_logic: "has_primitive('DP') and missing_artefact('accountant') and missing_artefact('composition')"
+    finding: >
+      DP is present but no privacy accountant or composition assumptions artefact
+      is recorded. Naive composition inflates total epsilon; advanced composition
+      (Kairouz et al. 2015, RDP accounting) must be documented. Add a privacy
+      accountant to the required_artefacts list.
+    references:
+      - "Kairouz et al. (2015) — The composition theorem for differential privacy"
+      - "NIST SP 800-226 (Draft)"
+
+  - id: COMP-002
+    name: "FL + DP — DP applied after insecure aggregation"
+    category: COMP
+    severity: AMBER
+    description: >
+      When FL uses DP without secure aggregation, the coordinator sees individual
+      noised updates before summation. This means the coordinator can learn more
+      than the sum, defeating part of the DP guarantee. DP-SGD was designed for
+      a trusted curator setting; if the coordinator is untrusted, MPC secure
+      aggregation should precede DP noise addition.
+    condition_logic: "has_primitive('FL') and has_primitive('DP') and not has_primitive('MPC')"
+    finding: >
+      FL + DP stack without MPC secure aggregation. If the coordinator is modelled
+      as honest-but-curious or untrusted, individual DP-noised updates are visible
+      before summation. Consider S-03 (FL + MPC + DP) if coordinator trust is limited.
+    references:
+      - "Bonawitz et al. (2017)"
+      - "Explorer T3 — S-03 (FL + MPC + DP)"
+
+  - id: COMP-003
+    name: "TEE + DP — dual trust anchors not explicitly declared"
+    category: COMP
+    severity: AMBER
+    description: >
+      Combining TEE and DP introduces two distinct trust requirements: hardware
+      vendor trust (for TEE) and parameter governance (for DP). If these are not
+      explicitly declared in the trust model, the combined assurance claim is
+      harder to audit and may be misread as stronger than it is.
+    condition_logic: "has_primitive('TEE') and has_primitive('DP') and missing_artefact('trust model declaration')"
+    finding: >
+      TEE + DP stack without a dual trust model declaration. Document that this
+      architecture requires (a) trust in the TEE hardware vendor and attestation
+      chain, and (b) correct DP parameterisation and composition accounting.
+      See Explorer T2 — P-04 shortcomings.
+    references:
+      - "Explorer T2 — P-04 (TEE + DP)"
+
+  - id: COMP-004
+    name: "Three-layer stack — composability risk not assessed"
+    category: COMP
+    severity: AMBER
+    description: >
+      Three-PET stacks introduce interaction effects between layers. If the threat
+      models of individual layers are not explicitly aligned, a gap may exist at
+      the interfaces (e.g. TEE attestation does not verify that DP parameterisation
+      is correct).
+    condition_logic: "has_stack('S-01') or has_stack('S-02') or has_stack('S-03') or has_stack('S-04')"
+    finding: >
+      A three-PET stack is declared. Verify that the threat models of each layer
+      are explicitly aligned and that no gap exists at layer interfaces. The
+      assurance narrative should state what each layer covers and what it does not.
+      See Explorer T3 for layer-specific artefact requirements.
+    references:
+      - "Explorer T3"
+
+  # ─── ASSURANCE ARTEFACT COMPLETENESS ────────────────────────────────────────
+
+  - id: ASSUR-001
+    name: "TEE — attestation report not recorded"
+    category: ASSUR
+    severity: RED
+    description: >
+      TEE provides in-use confidentiality via hardware attestation. Without a
+      recorded attestation report, there is no verifiable evidence that the
+      expected code is running on genuine hardware.
+    condition_logic: "has_primitive('TEE') and missing_artefact('attestation')"
+    finding: >
+      TEE is present but no attestation report artefact is recorded. Attestation
+      is the primary assurance mechanism for TEEs — without it, the hardware
+      isolation claim is unverified. Add attestation report to required_artefacts.
+    references:
+      - "Costan & Devadas (2016) — Intel SGX explained"
+
+  - id: ASSUR-002
+    name: "SYN — no disclosure risk evaluation"
+    category: ASSUR
+    severity: RED
+    description: >
+      Synthetic data deployments require a formal disclosure risk evaluation to
+      support any privacy claim. Absent this, the synthetic release is unauditable.
+    condition_logic: "has_primitive('SYN') and missing_artefact('disclosure-risk')"
+    finding: >
+      SYN is present but no disclosure-risk evaluation artefact is recorded.
+      A disclosure risk evaluation (membership inference test, linkage test, or
+      equivalent) is required for any substantive synthetic data privacy claim.
+    references:
+      - "ICO Anonymisation Code of Practice (2022)"
+      - "Explorer T1 — SYN core_artefacts"
+
+  - id: ASSUR-003
+    name: "DP — parameter manifest missing"
+    category: ASSUR
+    severity: RED
+    description: >
+      A DP deployment without a documented parameter manifest (epsilon, delta,
+      noise mechanism, clipping norm, sensitivity) is unauditable.
+    condition_logic: "has_primitive('DP') and missing_artefact('parameter manifest')"
+    finding: >
+      DP is present but no parameter manifest artefact is recorded. Epsilon, delta,
+      noise mechanism, and clipping/sensitivity values must be documented for the
+      privacy claim to be reproducible or auditable.
+    references:
+      - "NIST SP 800-226 (Draft) — DP evaluation guidelines"
+      - "Dwork & Roth (2014)"
+
+  - id: ASSUR-004
+    name: "MPC — implementation audit not present"
+    category: ASSUR
+    severity: AMBER
+    description: >
+      MPC implementations are complex and often have subtle errors. An implementation
+      audit by a third party is a best-practice requirement before production deployment.
+    condition_logic: "has_primitive('MPC') and missing_artefact('implementation audit') and not scale_is('pilot')"
+    finding: >
+      MPC is present in a non-pilot deployment without a recorded implementation audit.
+      MPC protocol implementations should be independently audited before production.
+    references:
+      - "Evans et al. (2018)"
+
+  - id: ASSUR-005
+    name: "ZKP — circuit audit not documented"
+    category: ASSUR
+    severity: AMBER
+    description: >
+      Under-constrained ZKP circuits allow provers to generate false proofs.
+      A circuit correctness and under-constraint audit is required for any
+      production ZKP deployment.
+    condition_logic: "has_primitive('ZKP') and missing_artefact('circuit audit') and not scale_is('pilot')"
+    finding: >
+      ZKP is present in a non-pilot deployment without a circuit audit artefact.
+      Under-constrained circuits are a known failure mode. Document a circuit
+      correctness review before production deployment.
+    references:
+      - "Ernstberger et al. (2023) — zk-Bench"
+
+  # ─── GOVERNANCE ─────────────────────────────────────────────────────────────
+
+  - id: GOV-001
+    name: "No audit log declared"
+    category: GOV
+    severity: AMBER
+    description: >
+      An audit log of access and release decisions is a minimum governance
+      requirement for any production PET deployment handling personal data.
+    condition_logic: "not audit_log_present() and not scale_is('pilot')"
+    finding: >
+      No audit log is declared for this non-pilot deployment. Access decisions,
+      output releases, and parameter changes should be logged and retained.
+      Set governance_controls.audit_log = true and document the log location.
+    references:
+      - "NIST Privacy Framework 1.0 — GOVERN function"
+      - "ISO/IEC 27701:2019"
+
+  - id: GOV-002
+    name: "TRE — no output checking mechanism declared"
+    category: GOV
+    severity: RED
+    description: >
+      TRE deployments rely on output checking as a first-class assurance
+      mechanism. Without a declared output control mechanism, the procedural
+      governance claim of the TRE is unsubstantiated.
+    condition_logic: "has_primitive('TRE') and output_control_is('none')"
+    finding: >
+      TRE is present but output_control is set to none. TREs require output
+      checking (human, automated statistical, or both) as a core assurance
+      mechanism. This is a RED finding.
+    references:
+      - "ONS Safe Outputs guidance (2024)"
+      - "Five Safes Framework"
+
+  - id: GOV-003
+    name: "No DPIA reference for special-category data"
+    category: GOV
+    severity: AMBER
+    description: >
+      Processing special-category data (health, biometric, genetic) typically
+      requires a Data Protection Impact Assessment under GDPR Art. 35 and
+      equivalent regulations. Absence of a DPIA reference is a governance gap.
+    condition_logic: "(has_regulation('UK GDPR') or has_regulation('EU GDPR')) and not governance_controls.get('dpia_reference')"
+    finding: >
+      GDPR applies to this deployment but no DPIA reference is recorded.
+      If special-category data is processed, a DPIA is likely required under
+      Art. 35. Record the DPIA reference in governance_controls.dpia_reference.
+    references:
+      - "GDPR Art. 35"
+      - "ICO DPIA guidance"
+
+  - id: GOV-004
+    name: "No governance framework alignment declared"
+    category: GOV
+    severity: GREEN
+    description: >
+      Aligning explicitly to a recognised governance framework (Five Safes,
+      NIST Privacy Framework, ISO/IEC 27701) improves assurance credibility
+      and simplifies procurement review.
+    condition_logic: "len(governance_controls.get('frameworks_applied', [])) == 0"
+    finding: >
+      No governance framework alignment is declared. Consider documenting
+      alignment (full, partial, or aspirational) with at least one of: Five Safes,
+      NIST Privacy Framework 1.0, ISO/IEC 27701, or ICO Anonymisation Code.
+    references:
+      - "NIST Privacy Framework 1.0"
+      - "ISO/IEC 27701:2019"
+
+  # ─── SECTOR-SPECIFIC ─────────────────────────────────────────────────────────
+
+  - id: SECTOR-001
+    name: "Healthcare — clinical validity evidence missing"
+    category: SECTOR
+    severity: AMBER
+    description: >
+      In healthcare deployments, technical privacy artefacts are necessary but
+      not sufficient. Domain-specific utility evidence (AUROC, sensitivity/specificity,
+      task benchmarks) is required alongside technical privacy documentation.
+    condition_logic: "sector_is('healthcare') and not has_primitive('TRE')"
+    finding: >
+      Healthcare deployment detected without TRE governance layer. Clinical
+      deployments typically require institutional approval processes and
+      domain-specific utility evidence (AUROC, task benchmarks) alongside
+      technical PET artefacts. Consider adding TRE to the stack and documenting
+      a clinical validation process.
+    references:
+      - "Explorer T4 — healthcare sector assurance posture"
+      - "Sheller et al. (2020)"
+
+  - id: SECTOR-002
+    name: "Public sector — TRE governance expected"
+    category: SECTOR
+    severity: AMBER
+    description: >
+      Public sector and official statistics deployments typically require a
+      Trusted Research Environment or equivalent governed access regime.
+      DP or synthetic data alone is insufficient for the accountability standard
+      expected in public sector contexts.
+    condition_logic: "sector_is('public_sector') and not has_primitive('TRE')"
+    finding: >
+      Public sector deployment without a TRE governance layer. Formal output
+      control and access audit mechanisms (Five Safes or equivalent) are expected
+      assurance requirements in this sector. Consider adding TRE to the stack.
+    references:
+      - "Explorer T4 — public sector assurance posture"
+      - "ONS (2024)"
+
+  - id: SECTOR-003
+    name: "Technology platform — parameter drift risk"
+    category: SECTOR
+    severity: AMBER
+    description: >
+      At platform scale, DP parameters that are acceptable for a single release
+      may become unacceptable under composition across millions of releases.
+      A parameter governance process (review cadence, composition budget tracking)
+      is required.
+    condition_logic: "sector_is('technology') and has_primitive('DP') and scale_is('platform-scale') and missing_artefact('composition')"
+    finding: >
+      Platform-scale technology deployment with DP but no composition accounting.
+      At population scale, naive composition of per-release epsilon values produces
+      a meaningless total budget. Document composition accounting across releases.
+    references:
+      - "Explorer T4 — technology platforms blocker"
+      - "NIST SP 800-226 (Draft)"
+
+  - id: SECTOR-004
+    name: "Finance — performance benchmarks expected"
+    category: SECTOR
+    severity: GREEN
+    description: >
+      Finance sector deployments justify specialist engineering costs through
+      performance evidence. Without latency and throughput benchmarks, the
+      commercial case for MPC or TEE overhead is hard to substantiate.
+    condition_logic: "sector_is('finance') and (has_primitive('MPC') or has_primitive('TEE')) and missing_artefact('benchmark')"
+    finding: >
+      Finance deployment with MPC or TEE but no performance benchmark artefact.
+      Documenting latency and throughput benchmarks strengthens the commercial
+      justification and supports procurement review.
+    references:
+      - "Explorer T4 — finance dominant assurance anchor"
+
+  # ─── REGULATORY ALIGNMENT ────────────────────────────────────────────────────
+
+  - id: REG-001
+    name: "NIST SP 800-226 alignment not assessed (DP deployments)"
+    category: REG
+    severity: GREEN
+    description: >
+      NIST SP 800-226 (Draft, 2023) provides evaluation guidelines for differential
+      privacy deployments. It is the primary US federal reference for DP parameter
+      governance and legal sufficiency assessment.
+    condition_logic: "has_primitive('DP')"
+    finding: >
+      DP is present. Document alignment with NIST SP 800-226 (Draft) in
+      regulatory_context.standards_alignment. This is the primary reference for
+      DP evaluation criteria and parameter governance requirements in US federal
+      and international contexts.
+    references:
+      - "NIST SP 800-226 — Guidelines for Evaluating Differential Privacy Guarantees (Draft 2023)"
+
+  - id: REG-002
+    name: "ICO PETs guidance alignment not assessed (UK deployments)"
+    category: REG
+    severity: GREEN
+    description: >
+      The ICO's 2023 PETs guidance is the primary UK regulatory reference for
+      PET deployment expectations. Alignment should be documented for any
+      UK-regulated deployment.
+    condition_logic: "has_regulation('UK GDPR')"
+    finding: >
+      UK GDPR applies. Document alignment with ICO PETs Guidance (2023) and
+      ICO Anonymisation Code of Practice (2022) in regulatory_context.standards_alignment.
+    references:
+      - "ICO PETs Guidance (2023)"
+      - "ICO Anonymisation Code of Practice (2022)"
+
+  - id: REG-003
+    name: "GDPR Art. 25 — data protection by design"
+    category: REG
+    severity: INFO
+    description: >
+      GDPR Art. 25 requires data protection by design and by default. A Privacy Card
+      documents the technical implementation of this obligation. The card itself is
+      a governance artefact supporting Art. 25 compliance.
+    condition_logic: "has_regulation('UK GDPR') or has_regulation('EU GDPR')"
+    finding: >
+      This Privacy Card can serve as an Art. 25 technical documentation artefact.
+      Ensure it is referenced in the DPIA and data protection register.
+    references:
+      - "GDPR Art. 25 — Data protection by design and by default"
+      - "EDPB Guidelines 4/2019 on Art. 25"

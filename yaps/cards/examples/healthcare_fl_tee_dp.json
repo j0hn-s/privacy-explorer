@@ -1,0 +1,273 @@
+{
+  "card_id": "CARD-healthcare-fl-tee-dp-202605",
+  "schema_version": "1.0",
+  "title": "Healthcare Federated Learning — FL + TEE + DP (S-01 pattern)",
+  "description": "Cross-institutional federated training for clinical imaging or screening models, following the NVIDIA FLARE / NHS FLIP pattern. Local data never leaves institution; aggregation runs in a hardware-isolated enclave; DP bounds statistical disclosure from the released model.",
+  "created": "2026-05-01",
+  "last_updated": "2026-05-01",
+  "status": "review",
+  "authors": ["Privacy Explorer — example card"],
+
+  "architecture_pattern": {
+    "stack_ref": "S-01",
+    "custom": false
+  },
+
+  "pet_components": [
+    {
+      "primitive_id": "FL",
+      "role": "local data retention — raw clinical data stays on institution devices; only model updates leave the site",
+      "implementation_status": "deployed",
+      "tooling": [
+        {
+          "name": "NVIDIA FLARE",
+          "version": "2.4",
+          "url": "https://nvflare.readthedocs.io/",
+          "licence": "Apache 2.0"
+        }
+      ],
+      "parameters": {
+        "aggregation_strategy": "FedAvg",
+        "rounds": 100,
+        "clients": 12,
+        "min_clients_per_round": 8
+      },
+      "parameter_notes": "Non-IID data distribution across sites degrades convergence; convergence monitoring required per round."
+    },
+    {
+      "primitive_id": "TEE",
+      "role": "hardware isolation of aggregation server — enclave protects intermediate model state from cloud operator",
+      "implementation_status": "deployed",
+      "tooling": [
+        {
+          "name": "AWS Nitro Enclaves",
+          "url": "https://aws.amazon.com/ec2/nitro/nitro-enclaves/",
+          "licence": "proprietary"
+        }
+      ],
+      "parameters": {
+        "vendor": "AWS Nitro Enclaves",
+        "memory_mb": 4096,
+        "side_channel_mitigations": "memory encryption enabled; no hyperthreading on enclave vCPUs"
+      },
+      "parameter_notes": "Enclave measurement must be pinned and verified at each aggregation round start."
+    },
+    {
+      "primitive_id": "DP",
+      "role": "formal output disclosure bound — noise added during aggregation to limit individual record leakage from the released model",
+      "implementation_status": "deployed",
+      "tooling": [
+        {
+          "name": "TensorFlow Privacy",
+          "url": "https://github.com/tensorflow/privacy",
+          "licence": "Apache 2.0"
+        },
+        {
+          "name": "Google dp_accounting",
+          "url": "https://github.com/google/differential-privacy/tree/main/python/dp_accounting",
+          "licence": "Apache 2.0"
+        }
+      ],
+      "parameters": {
+        "epsilon": 4.0,
+        "delta": 1e-5,
+        "noise_mechanism": "Gaussian",
+        "clipping_norm": 1.0,
+        "accounting_method": "RDP (Rényi DP)"
+      },
+      "parameter_notes": "ε=4.0 is a pragmatic choice for healthcare imaging utility; tighter values degrade AUROC significantly. Composition tracked across all 100 training rounds via RDP accountant."
+    }
+  ],
+
+  "trust_model": {
+    "summary": "Participating institutions are semi-trusted data holders. The aggregation server is operated by a cloud provider and is considered honest-but-curious at the OS/hypervisor level — the TEE isolates it from the aggregation computation. The released model is considered public output and must satisfy the DP bound. External analysts are untrusted.",
+    "threat_actors": [
+      {
+        "actor": "cloud infrastructure operator",
+        "capability": "can observe all network traffic and OS-level memory outside the enclave",
+        "mitigated_by": "TEE — enclave isolates aggregation computation from the host OS",
+        "residual_risk": "Side-channel attacks (Spectre-class) remain a residual risk; enclave memory limits may require model partitioning"
+      },
+      {
+        "actor": "curious aggregation coordinator",
+        "capability": "can observe individual model updates from participating institutions before summation",
+        "mitigated_by": "TEE — intermediate update state is inside the enclave; DP bounds what the released model reveals",
+        "residual_risk": "Without MPC secure aggregation (S-03 pattern), the coordinator inside the enclave still sees individual updates. TEE attestation does not prevent this — only MPC addition eliminates it."
+      },
+      {
+        "actor": "external model consumer / attacker",
+        "capability": "can perform membership inference and model inversion attacks on the released model",
+        "mitigated_by": "DP — formal bound (ε=4.0) on individual record leakage from the model",
+        "residual_risk": "ε=4.0 provides moderate protection; tight membership inference attacks remain partially feasible at this epsilon value"
+      }
+    ],
+    "out_of_scope_threats": [
+      "Byzantine poisoning attacks from malicious participating institutions",
+      "Data quality and demographic bias issues within participating sites",
+      "Supply-chain compromise of the NVIDIA FLARE framework"
+    ]
+  },
+
+  "assurance_targets": {
+    "required_artefacts": [
+      {
+        "artefact": "attestation report and enclave measurement (TEE layer)",
+        "status": "exists",
+        "location": "internal/attestation/round_*.json",
+        "notes": "Generated per aggregation round; pinned measurement hash stored in change-control log"
+      },
+      {
+        "artefact": "privacy accountant and parameter manifest (DP layer)",
+        "status": "exists",
+        "location": "internal/dp/accountant_log.csv",
+        "notes": "RDP accountant tracks epsilon spend across all 100 rounds; total budget ε=4.0 not exceeded"
+      },
+      {
+        "artefact": "training protocol and aggregation specification (FL layer)",
+        "status": "exists",
+        "location": "internal/protocol/fl_spec_v2.pdf"
+      },
+      {
+        "artefact": "convergence and robustness monitoring report",
+        "status": "exists",
+        "location": "internal/monitoring/convergence_report_202605.pdf"
+      },
+      {
+        "artefact": "output clearance or release log",
+        "status": "planned",
+        "notes": "Release process under review with clinical governance board; target Q3 2026"
+      },
+      {
+        "artefact": "side-channel mitigation declaration for the aggregation enclave",
+        "status": "exists",
+        "location": "internal/tee/side_channel_posture.md"
+      }
+    ],
+    "current_maturity_stage": 2,
+    "maturity_justification": "Workflow is repeatable and documented. Stage 3 blocked by absence of formal release log and pending clinical governance board sign-off on output clearance process."
+  },
+
+  "governance_controls": {
+    "output_control": "human-review",
+    "access_control": "Institutional DUA (Data Use Agreement) required per participating site; access to aggregated model gated on clinical governance board approval",
+    "change_control": "Parameter changes (epsilon, clipping norm, aggregation strategy) require change-control log entry and governance review",
+    "audit_log": true,
+    "dpia_reference": "DPIA-ONCOLOGY-2026-003",
+    "frameworks_applied": [
+      {
+        "framework": "NIST Privacy Framework 1.0",
+        "alignment_level": "partial",
+        "notes": "IDENTIFY and GOVERN functions covered; COMMUNICATE function under development"
+      },
+      {
+        "framework": "ISO/IEC 27701:2019",
+        "alignment_level": "aspirational"
+      }
+    ]
+  },
+
+  "deployment_context": {
+    "sector_ref": "healthcare",
+    "sub_sector": "cross-institutional oncology imaging research",
+    "data_subjects_jurisdiction": ["UK", "EU"],
+    "scale": "limited-production"
+  },
+
+  "regulatory_context": {
+    "applicable_regulations": [
+      {
+        "regulation": "UK GDPR",
+        "jurisdiction": "UK",
+        "relevant_articles": ["Art. 25 (data protection by design)", "Art. 35 (DPIA)", "Art. 9 (special category data)"],
+        "alignment_status": "partial",
+        "gap_notes": "Art. 9 basis documentation for medical research (Art. 9(2)(j)) in progress"
+      },
+      {
+        "regulation": "EU GDPR",
+        "jurisdiction": "EU",
+        "relevant_articles": ["Art. 25", "Art. 35", "Art. 9"],
+        "alignment_status": "not-assessed"
+      }
+    ],
+    "standards_alignment": [
+      {
+        "standard": "NIST SP 800-226",
+        "alignment_level": "partial",
+        "notes": "RDP accounting documented; parameter governance review process not yet formalised"
+      },
+      {
+        "standard": "ICO PETs Guidance 2023",
+        "alignment_level": "partial"
+      }
+    ]
+  },
+
+  "tooling_candidates": [
+    {
+      "name": "NVIDIA FLARE",
+      "url": "https://nvflare.readthedocs.io/",
+      "primitive_ids": ["FL"],
+      "maturity": "production",
+      "notes": "Used by NHS FLIP (King's College London) and multiple clinical FL deployments"
+    },
+    {
+      "name": "TensorFlow Privacy",
+      "url": "https://github.com/tensorflow/privacy",
+      "primitive_ids": ["DP"],
+      "maturity": "production"
+    },
+    {
+      "name": "Google dp_accounting",
+      "url": "https://github.com/google/differential-privacy/tree/main/python/dp_accounting",
+      "primitive_ids": ["DP"],
+      "maturity": "production",
+      "notes": "RDP and PRV accountants; recommended for FL+DP composition tracking"
+    },
+    {
+      "name": "OpenDP",
+      "url": "https://opendp.org/",
+      "primitive_ids": ["DP"],
+      "maturity": "production"
+    },
+    {
+      "name": "AWS Nitro Enclaves",
+      "url": "https://aws.amazon.com/ec2/nitro/nitro-enclaves/",
+      "primitive_ids": ["TEE"],
+      "maturity": "production"
+    }
+  ],
+
+  "residual_risks": [
+    {
+      "risk": "Coordinator inside TEE sees individual institution updates before summation — TEE does not provide MPC-grade isolation of individual contributions",
+      "severity": "medium",
+      "mitigation_path": "Upgrade to S-03 pattern (FL + MPC + DP) to eliminate coordinator visibility of individual updates"
+    },
+    {
+      "risk": "ε=4.0 provides only moderate membership inference protection; tight attacks remain partially feasible",
+      "severity": "medium",
+      "mitigation_path": "Reduce epsilon for subsequent model generations as utility benchmarks allow; document accepted risk in clinical governance sign-off"
+    },
+    {
+      "risk": "Non-IID data distribution across institutions may degrade model utility disproportionately for minority site distributions",
+      "severity": "medium",
+      "mitigation_path": "Per-site utility evaluation and fairness analysis as part of convergence reporting"
+    }
+  ],
+
+  "utility_evidence": {
+    "primary_metric": "AUROC (malignant nodule detection)",
+    "baseline_value": 0.91,
+    "pet_value": 0.87,
+    "unit": "AUROC",
+    "notes": "4-point utility degradation at ε=4.0 vs. non-private centralised baseline. Acceptable per clinical governance assessment for this use case."
+  },
+
+  "change_log": [
+    {
+      "date": "2026-05-01",
+      "change": "Initial card created as YAPS example",
+      "author": "Privacy Explorer"
+    }
+  ]
+}

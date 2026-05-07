@@ -1,0 +1,247 @@
+{
+  "card_id": "CARD-finance-tee-mpc-202605",
+  "schema_version": "1.0",
+  "title": "Cross-Bank Analytics — TEE + MPC (P-05 pattern)",
+  "description": "Collaborative fraud detection or credit scoring across multiple financial institutions, using hardware isolation (TEE) to host the MPC computation. Neither institution shares raw transaction data; the TEE hosts the MPC protocol execution and provides hardware-enforced confidentiality alongside cryptographic correctness guarantees.",
+  "created": "2026-05-01",
+  "last_updated": "2026-05-01",
+  "status": "draft",
+  "authors": ["Privacy Explorer — example card"],
+
+  "architecture_pattern": {
+    "pairing_ref": "P-05",
+    "custom": false
+  },
+
+  "pet_components": [
+    {
+      "primitive_id": "TEE",
+      "role": "hardware isolation of the MPC protocol execution environment — reduces communication overhead and provides hardware-enforced confidentiality of the coordinator computation",
+      "implementation_status": "in-development",
+      "tooling": [
+        {
+          "name": "Azure Confidential Computing (AMD SEV-SNP)",
+          "url": "https://azure.microsoft.com/en-us/solutions/confidential-compute/",
+          "licence": "proprietary"
+        },
+        {
+          "name": "Gramine (formerly Graphene-SGX)",
+          "url": "https://gramineproject.io/",
+          "licence": "LGPL-3.0"
+        }
+      ],
+      "parameters": {
+        "vendor": "AMD SEV-SNP via Azure Confidential Computing",
+        "memory_mb": 16384,
+        "side_channel_mitigations": "AMD hardware memory encryption; no SMT on enclave VMs"
+      },
+      "parameter_notes": "AMD SEV-SNP chosen over Intel SGX for larger enclave memory limits; trade-off is a different attestation chain and different side-channel posture."
+    },
+    {
+      "primitive_id": "MPC",
+      "role": "cryptographic correctness guarantee — participating banks learn only the agreed joint output (e.g. fraud score, credit risk band); neither party learns the other's raw transaction data",
+      "implementation_status": "in-development",
+      "tooling": [
+        {
+          "name": "MP-SPDZ",
+          "url": "https://github.com/data61/MP-SPDZ",
+          "licence": "BSD-2"
+        },
+        {
+          "name": "CrypTen",
+          "url": "https://github.com/facebookresearch/CrypTen",
+          "licence": "MIT"
+        }
+      ],
+      "parameters": {
+        "protocol": "SPDZ2k (optimised for integer arithmetic)",
+        "adversary_model": "honest-but-curious (semi-honest) majority",
+        "parties": 3,
+        "threshold": 1,
+        "communication_rounds": "to be benchmarked"
+      },
+      "parameter_notes": "SPDZ2k chosen for integer-native arithmetic suited to transaction data. Malicious adversary extension (MAC-based) under evaluation but adds overhead. Three-party threshold with 1-corruption assumption matches the inter-bank trust model."
+    }
+  ],
+
+  "trust_model": {
+    "summary": "Three participating banks, each holding sensitive transaction records. The TEE coordinator is operated by a neutral cloud infrastructure provider. Each bank is modelled as honest-but-curious — they will follow the protocol but may attempt to learn more from outputs. No single bank is trusted with another's raw data. The MPC protocol guarantees that only the agreed joint output is learned; the TEE provides hardware-enforced confidentiality of the coordinator's computation.",
+    "threat_actors": [
+      {
+        "actor": "participating bank (honest-but-curious)",
+        "capability": "can observe all protocol messages it legitimately receives and attempt to infer the other parties' data",
+        "mitigated_by": "MPC — SPDZ2k protocol guarantees that a semi-honest party learns only the joint output; TEE provides additional hardware isolation of the coordinator state",
+        "residual_risk": "Malicious deviation (actively corrupted party) is not covered by the current adversary model; requires MAC-check extension to SPDZ protocol"
+      },
+      {
+        "actor": "cloud infrastructure operator (Azure)",
+        "capability": "can observe all VM memory and network traffic outside the TEE boundary",
+        "mitigated_by": "TEE — AMD SEV-SNP memory encryption isolates enclave from hypervisor",
+        "residual_risk": "Hardware-level side-channel attacks; AMD SEV-SNP side-channel posture less well-studied than Intel SGX equivalents"
+      },
+      {
+        "actor": "external attacker with knowledge of joint output",
+        "capability": "can attempt to infer individual transaction patterns from released fraud scores or credit bands",
+        "mitigated_by": "MPC output is a joint aggregate; individual record inference requires knowledge of other parties' inputs",
+        "residual_risk": "Output granularity may allow partial inference; consider adding DP to released outputs (P-04/P-05 extension) if outputs are fine-grained"
+      }
+    ],
+    "out_of_scope_threats": [
+      "Regulatory non-compliance at individual institution level",
+      "Data quality or definition mismatches across institutions",
+      "Side-channel attacks at the network layer (timing, traffic analysis)"
+    ]
+  },
+
+  "assurance_targets": {
+    "required_artefacts": [
+      {
+        "artefact": "attestation report and enclave measurement (TEE layer)",
+        "status": "planned",
+        "notes": "Attestation workflow design in progress; measurement pinning policy to be agreed across three banks"
+      },
+      {
+        "artefact": "adversary model declaration (MPC layer)",
+        "status": "exists",
+        "location": "internal/mpc/adversary_model_v1.pdf",
+        "notes": "Honest-but-curious majority; three-party, one-corruption threshold. Malicious extension documented as future work."
+      },
+      {
+        "artefact": "MPC protocol specification",
+        "status": "exists",
+        "location": "internal/mpc/protocol_spec_spdz2k.pdf"
+      },
+      {
+        "artefact": "implementation audit (MPC and TEE layers)",
+        "status": "planned",
+        "notes": "Third-party cryptographic audit scoped for Q4 2026"
+      },
+      {
+        "artefact": "benchmark evidence (latency, throughput)",
+        "status": "planned",
+        "notes": "Communication round benchmarks required before production go/no-go"
+      },
+      {
+        "artefact": "side-channel mitigation declaration for the aggregation enclave",
+        "status": "exists",
+        "location": "internal/tee/side_channel_declaration.md"
+      }
+    ],
+    "current_maturity_stage": 2,
+    "maturity_justification": "Protocol specified and adversary model declared (Stage 2 threshold met). Stage 3 blocked by absence of third-party implementation audit and formal benchmark documentation."
+  },
+
+  "governance_controls": {
+    "output_control": "automated-statistical",
+    "access_control": "Three-party joint governance committee; protocol initiation requires agreement from all three participating banks; output release requires joint sign-off",
+    "change_control": "Protocol version changes require joint governance committee approval; attestation measurement changes require re-approval from all parties",
+    "audit_log": true,
+    "dpia_reference": "DPIA-CROSSBANK-FRAUD-2026-001",
+    "frameworks_applied": [
+      {
+        "framework": "NIST Privacy Framework 1.0",
+        "alignment_level": "partial"
+      }
+    ]
+  },
+
+  "deployment_context": {
+    "sector_ref": "finance",
+    "sub_sector": "cross-institutional fraud detection and credit risk analytics",
+    "data_subjects_jurisdiction": ["UK", "EU"],
+    "scale": "pilot"
+  },
+
+  "regulatory_context": {
+    "applicable_regulations": [
+      {
+        "regulation": "UK GDPR",
+        "jurisdiction": "UK",
+        "relevant_articles": ["Art. 25 (data protection by design)", "Art. 26 (joint controllers)", "Art. 35 (DPIA)"],
+        "alignment_status": "partial",
+        "gap_notes": "Joint controller agreement under Art. 26 required between participating banks; in drafting"
+      },
+      {
+        "regulation": "EU GDPR",
+        "jurisdiction": "EU",
+        "relevant_articles": ["Art. 25", "Art. 26", "Art. 35"],
+        "alignment_status": "not-assessed"
+      }
+    ],
+    "standards_alignment": [
+      {
+        "standard": "ICO PETs Guidance 2023",
+        "alignment_level": "partial",
+        "notes": "MPC and TEE combination consistent with ICO PETs guidance; implementation audit pending"
+      }
+    ]
+  },
+
+  "tooling_candidates": [
+    {
+      "name": "MP-SPDZ",
+      "url": "https://github.com/data61/MP-SPDZ",
+      "primitive_ids": ["MPC"],
+      "maturity": "production",
+      "notes": "Leading academic-to-production MPC framework; SPDZ2k, semi-honest and malicious variants"
+    },
+    {
+      "name": "CrypTen",
+      "url": "https://github.com/facebookresearch/CrypTen",
+      "primitive_ids": ["MPC"],
+      "maturity": "production",
+      "notes": "PyTorch-based MPC; easier integration with ML pipelines"
+    },
+    {
+      "name": "MOTION",
+      "url": "https://github.com/encryptogroup/MOTION",
+      "primitive_ids": ["MPC"],
+      "maturity": "experimental",
+      "notes": "High-performance MPC framework; good for benchmarking"
+    },
+    {
+      "name": "Azure Confidential Computing",
+      "url": "https://azure.microsoft.com/en-us/solutions/confidential-compute/",
+      "primitive_ids": ["TEE"],
+      "maturity": "production"
+    },
+    {
+      "name": "Gramine (Graphene-SGX successor)",
+      "url": "https://gramineproject.io/",
+      "primitive_ids": ["TEE"],
+      "maturity": "production",
+      "notes": "Enables running unmodified Linux applications inside Intel SGX or AMD SEV enclaves"
+    }
+  ],
+
+  "residual_risks": [
+    {
+      "risk": "Honest-but-curious adversary model does not cover malicious deviation by a participating bank; an actively corrupted party could deviate from the protocol",
+      "severity": "high",
+      "mitigation_path": "Extend to malicious-secure SPDZ protocol with MAC verification; document accepted risk for pilot phase"
+    },
+    {
+      "risk": "Third-party implementation audit not yet completed; known-vulnerability classes in MPC implementations not ruled out",
+      "severity": "medium",
+      "mitigation_path": "Complete cryptographic audit (scoped Q4 2026) before production deployment"
+    },
+    {
+      "risk": "Communication overhead of MPC at production transaction volumes may exceed latency SLAs",
+      "severity": "medium",
+      "mitigation_path": "Benchmark at representative transaction volumes; TEE co-location may reduce some latency"
+    },
+    {
+      "risk": "No formal output disclosure bound — MPC output granularity may allow partial inference from released scores",
+      "severity": "low",
+      "mitigation_path": "Consider adding DP noise to released outputs post-MPC computation to bound individual-level leakage"
+    }
+  ],
+
+  "change_log": [
+    {
+      "date": "2026-05-01",
+      "change": "Initial card created as YAPS example",
+      "author": "Privacy Explorer"
+    }
+  ]
+}
