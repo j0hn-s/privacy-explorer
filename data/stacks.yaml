@@ -47,9 +47,12 @@ stacks:
       requires expertise spanning systems, cryptography, and privacy engineering.
     confidence: deployment_documented
     references:
-      - "NVIDIA FLARE (2021)"
-      - "Soltan et al. (2024)"
-      - "Bonawitz et al. (2017)"
+      - text: "NVIDIA FLARE — federated learning application runtime environment"
+        url: "https://nvflare.readthedocs.io/"
+      - text: "Soltan et al. (2024) — NHS FLIP federated learning infrastructure for healthcare"
+        url: "https://www.thelancet.com/journals/landig/article/PIIS2589-7500(24)00060-X/fulltext"
+      - text: "Bonawitz et al. (2017) — practical secure aggregation"
+        url: "https://arxiv.org/abs/1611.04482"
 
   - id: S-02
     base_pair: P-07
@@ -81,9 +84,12 @@ stacks:
       from multi-layer approval processes can stall research timelines.
     confidence: deployment_documented
     references:
-      - "ONS (2024)"
-      - "ADR UK (2024)"
-      - "Goldacre Review (2022)"
+      - text: "ONS Secure Research Service"
+        url: "https://www.ons.gov.uk/aboutus/whatwedo/statistics/requestingstatistics/approvedresearcherscheme"
+      - text: "ADR UK — data access framework"
+        url: "https://www.adruk.org/data-access/data-access-framework/"
+      - text: "Goldacre Review (2022) — better, broader, safer uses of health data"
+        url: "https://www.gov.uk/government/publications/better-broader-safer-using-health-data-for-research-and-analysis"
 
   - id: S-03
     base_pair: P-02
@@ -115,8 +121,10 @@ stacks:
       sampling and DP noise; engineering and operational complexity is high.
     confidence: peer_reviewed
     references:
-      - "Bonawitz et al. (2017)"
-      - "Ball et al. (2024) — DP FTRL with secure aggregation"
+      - text: "Bonawitz et al. (2017) — practical secure aggregation"
+        url: "https://arxiv.org/abs/1611.04482"
+      - text: "Google dp_accounting library"
+        url: "https://github.com/google/differential-privacy/tree/main/python/dp_accounting"
 
   - id: S-04
     base_pair: P-08
@@ -149,6 +157,9 @@ stacks:
       TEE enclave memory limits can constrain generator architecture.
     confidence: theoretical
     references:
-      - "McKenna et al. (2021)"
-      - "Carlini et al. (2019) — generative model leakage"
-      - "Houssiau et al. (2022) — TAPAS"
+      - text: "McKenna et al. (2021) — winning the NIST DP synthetic data competition"
+        url: "https://arxiv.org/abs/2108.04978"
+      - text: "Carlini et al. (2019) — the secret sharer: evaluating generative model memorization"
+        url: "https://arxiv.org/abs/1802.08232"
+      - text: "Houssiau et al. (2022) — TAPAS"
+        url: "https://arxiv.org/abs/2211.06550"

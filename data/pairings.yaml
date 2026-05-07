@@ -41,9 +41,12 @@ pairings:
       rounds; utility loss hard to predict ex ante for heterogeneous client distributions.
     confidence: deployment_documented
     references:
-      - "Hard et al. (2018) — Google Gboard"
-      - "Sheller et al. (2020) — federated medical imaging"
-      - "Abadi et al. (2016) — DP-SGD"
+      - text: "Hard et al. (2018) — Google Gboard FL"
+        url: "https://arxiv.org/abs/1811.03604"
+      - text: "Sheller et al. (2020) — federated learning in medical imaging"
+        url: "https://www.nature.com/articles/s41598-020-69250-1"
+      - text: "Abadi et al. (2016) — DP-SGD"
+        url: "https://arxiv.org/abs/1607.00133"
 
   - id: P-02
     pets: [FL, MPC]
@@ -65,8 +68,10 @@ pairings:
       complexity; does not bound information leakage from the aggregate itself.
     confidence: deployment_documented
     references:
-      - "Bonawitz et al. (2017) — practical secure aggregation"
-      - "McMahan et al. (2017)"
+      - text: "Bonawitz et al. (2017) — practical secure aggregation for federated learning"
+        url: "https://arxiv.org/abs/1611.04482"
+      - text: "McMahan et al. (2017) — Communication-efficient learning of deep networks (FedAvg)"
+        url: "https://arxiv.org/abs/1602.05629"
 
   - id: P-03
     pets: [FL, TEE]
@@ -88,9 +93,12 @@ pairings:
       management overhead; does not provide formal bounds on output disclosure.
     confidence: deployment_documented
     references:
-      - "OpenMined / UK AISI / Anthropic pilot (2026)"
-      - "NIST CAISI collaboration (2026)"
-      - "Ryffel et al. (2020)"
+      - text: "OpenMined — open-source privacy-preserving ML ecosystem"
+        url: "https://www.openmined.org/"
+      - text: "Ryffel et al. (2020) — PySyft: a library for secure and private deep learning"
+        url: "https://arxiv.org/abs/1811.04017"
+      - text: "NVIDIA FLARE (Federated Learning Application Runtime Environment)"
+        url: "https://nvflare.readthedocs.io/"
 
   - id: P-04
     pets: [TEE, DP]
@@ -113,9 +121,12 @@ pairings:
       require assurance; composability risk if threat models are misaligned.
     confidence: deployment_documented
     references:
-      - "ONS Secure Research Service"
-      - "AWS Nitro + DP workflows"
-      - "Schuster et al. (2015)"
+      - text: "ONS Secure Research Service"
+        url: "https://www.ons.gov.uk/aboutus/whatwedo/statistics/requestingstatistics/approvedresearcherscheme"
+      - text: "AWS Nitro Enclaves"
+        url: "https://aws.amazon.com/ec2/nitro/nitro-enclaves/"
+      - text: "Azure Confidential Computing"
+        url: "https://azure.microsoft.com/en-us/solutions/confidential-compute/"
 
   - id: P-05
     pets: [TEE, MPC]
@@ -138,7 +149,10 @@ pairings:
       constrain MPC circuit size.
     confidence: practitioner_reported
     references:
-      - "Knauth et al. (2018) — TEE-hosted MPC"
+      - text: "Knauth et al. (2018) — integrating remote attestation with transport layer security"
+        url: "https://arxiv.org/abs/1801.05863"
+      - text: "MP-SPDZ — versatile framework for multi-party computation"
+        url: "https://github.com/data61/MP-SPDZ"
 
   - id: P-06
     pets: [TEE, ZKP]
@@ -162,8 +176,12 @@ pairings:
       limited production deployments outside research contexts.
     confidence: theoretical
     references:
-      - "Chen et al. (2024) — ZKML"
-      - "Ernstberger et al. (2023)"
+      - text: "Chen et al. (2024) — zkML: zero-knowledge proofs for machine learning"
+        url: "https://arxiv.org/abs/2310.08727"
+      - text: "Ernstberger et al. (2023) — zk-Bench: a toolbox for standardized benchmarking of ZKPs"
+        url: "https://arxiv.org/abs/2312.04045"
+      - text: "EZKL — ZKP for ML inference"
+        url: "https://github.com/zkonduit/ezkl"
 
   - id: P-07
     pets: [TRE, DP]
@@ -188,9 +206,12 @@ pairings:
       by jurisdiction.
     confidence: deployment_documented
     references:
-      - "ONS Safe Outputs guidance (2024)"
-      - "ADR UK output checking (2024)"
-      - "NIST IR 8062 (2023)"
+      - text: "ONS Safe Outputs learning path"
+        url: "https://www.ons.gov.uk/aboutus/whatwedo/statistics/requestingstatistics/approvedresearcherscheme/safeoutputslearningpath"
+      - text: "ADR UK — five safes framework for data access"
+        url: "https://www.adruk.org/data-access/data-access-framework/"
+      - text: "NIST IR 8062 — an introduction to privacy engineering and risk management"
+        url: "https://doi.org/10.6028/NIST.IR.8062"
 
   - id: P-08
     pets: [SYN, DP]
@@ -213,6 +234,9 @@ pairings:
       models compounds noise across generation steps.
     confidence: peer_reviewed
     references:
-      - "McKenna et al. (2021) — NIST DP synthetic data competition"
-      - "Xie et al. (2018) — DP-GAN"
-      - "Houssiau et al. (2022) — TAPAS"
+      - text: "McKenna et al. (2021) — winning the NIST DP synthetic data competition"
+        url: "https://arxiv.org/abs/2108.04978"
+      - text: "Xie et al. (2018) — differentially private generative adversarial network"
+        url: "https://arxiv.org/abs/1802.06739"
+      - text: "Houssiau et al. (2022) — TAPAS: tricks to accelerate (traversal of) privacy-relevant audits"
+        url: "https://arxiv.org/abs/2211.06550"
