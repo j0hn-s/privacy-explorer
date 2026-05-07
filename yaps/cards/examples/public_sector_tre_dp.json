@@ -1,0 +1,230 @@
+{
+  "card_id": "CARD-public-sector-tre-dp-202605",
+  "schema_version": "1.0",
+  "title": "Public Sector Governed Analytics — TRE + DP (P-07 pattern)",
+  "description": "Accredited research access to sensitive administrative data within a Trusted Research Environment, with differential privacy applied at the statistical output release stage. Follows the ONS Secure Research Service / ADR UK pattern.",
+  "created": "2026-05-01",
+  "last_updated": "2026-05-01",
+  "status": "approved",
+  "authors": ["Privacy Explorer — example card"],
+
+  "architecture_pattern": {
+    "pairing_ref": "P-07",
+    "custom": false
+  },
+
+  "pet_components": [
+    {
+      "primitive_id": "TRE",
+      "role": "institutional access controls and procedural governance — Five Safes framework gates who may access what data for which purposes; output checking is a first-class assurance mechanism",
+      "implementation_status": "deployed",
+      "tooling": [
+        {
+          "name": "ONS Secure Research Service (SRS)",
+          "url": "https://www.ons.gov.uk/aboutus/whatwedo/statistics/requestingstatistics/approvedresearcherscheme",
+          "licence": "public sector"
+        }
+      ],
+      "parameters": {
+        "framework": "Five Safes",
+        "accreditation": "UKSA accredited data environment",
+        "output_checking": "human review by ONS output clearing team"
+      },
+      "parameter_notes": "TRE is the primary accountability mechanism. All outputs must pass safe outputs review regardless of DP application."
+    },
+    {
+      "primitive_id": "DP",
+      "role": "formal statistical disclosure bound applied at output release — DP noise added to released statistics to bound individual-level leakage",
+      "implementation_status": "deployed",
+      "tooling": [
+        {
+          "name": "OpenDP",
+          "url": "https://opendp.org/",
+          "licence": "MIT"
+        },
+        {
+          "name": "Google Differential Privacy library",
+          "url": "https://github.com/google/differential-privacy",
+          "licence": "Apache 2.0"
+        }
+      ],
+      "parameters": {
+        "epsilon": 1.0,
+        "delta": 0,
+        "noise_mechanism": "Laplace",
+        "sensitivity": "query-specific (L1 global sensitivity analysis per output)",
+        "accounting_method": "sequential composition with advanced composition for repeated queries"
+      },
+      "parameter_notes": "Pure DP (δ=0) chosen to maximise legal defensibility for statistical releases. ε=1.0 per query; total release budget governed by release policy. Parameter policy agreed with legal and statistical governance leads."
+    }
+  ],
+
+  "trust_model": {
+    "summary": "Data subjects are the general public — census respondents, admin data subjects. Approved researchers are trusted to operate within project scope under DUA. ONS infrastructure is trusted. TRE governance is the primary accountability mechanism; DP provides a mathematical second factor on statistical outputs.",
+    "threat_actors": [
+      {
+        "actor": "approved researcher (insider threat)",
+        "capability": "direct access to microdata within TRE; can run arbitrary queries within project scope",
+        "mitigated_by": "TRE — Five Safes access controls, project scope limitations, output checking, audit logs",
+        "residual_risk": "Residual inference risk from repeated queries within session; mitigated by DP composition accounting and human output checking"
+      },
+      {
+        "actor": "external attacker with auxiliary data",
+        "capability": "may attempt to link released statistics with external datasets (electoral roll, published records)",
+        "mitigated_by": "DP — formal bound on per-individual information released in statistics; output checking provides an additional layer",
+        "residual_risk": "Auxiliary data attacks are not fully modelled — see auxiliary_data_risk in data profile. ε=1.0 provides strong protection but does not eliminate re-identification risk under very rich auxiliary data."
+      }
+    ],
+    "out_of_scope_threats": [
+      "Compromise of ONS infrastructure or staff (modelled separately under ISMS)",
+      "Supply-chain attacks on approved DP tooling"
+    ]
+  },
+
+  "assurance_targets": {
+    "required_artefacts": [
+      {
+        "artefact": "output clearance workflow and decision log (TRE layer)",
+        "status": "exists",
+        "location": "SRS output checking team — internal records system",
+        "notes": "All outputs cleared by named ONS output checker; decision rationale recorded"
+      },
+      {
+        "artefact": "DP accountant and parameter manifest (DP layer)",
+        "status": "exists",
+        "location": "internal/dp/release_budget_tracker.xlsx",
+        "notes": "Sequential composition budget tracked per project; release policy sets maximum total epsilon"
+      },
+      {
+        "artefact": "release policy documentation",
+        "status": "exists",
+        "location": "https://www.ons.gov.uk/aboutus/whatwedo/statistics/requestingstatistics/approvedresearcherscheme/safeoutputslearningpath"
+      },
+      {
+        "artefact": "access and project approval audit records",
+        "status": "exists",
+        "location": "ONS UKSA accreditation and project approval records"
+      },
+      {
+        "artefact": "composition assumptions (sequential, parallel, advanced)",
+        "status": "exists",
+        "notes": "Advanced composition documented in DP parameter manifest"
+      }
+    ],
+    "current_maturity_stage": 4,
+    "maturity_justification": "TRE + DP is operationalised with maintained change-control logs, third-party auditable artefacts, and a formal release policy. Full audit-readiness achieved where both layers produce maintained artefact sets."
+  },
+
+  "governance_controls": {
+    "output_control": "both",
+    "access_control": "Five Safes accreditation — safe people (approved researcher status), safe projects (project scope DUA), safe data (de-identified linkage), safe settings (TRE desktop), safe outputs (human output checking)",
+    "change_control": "DP parameter changes require joint sign-off by statistical and legal governance leads; TRE policy changes subject to UKSA board review",
+    "audit_log": true,
+    "dpia_reference": "ONS-DPIA-ADMIN-LINKAGE-2025-017",
+    "frameworks_applied": [
+      {
+        "framework": "Five Safes",
+        "alignment_level": "full",
+        "notes": "ONS SRS is the reference implementation of Five Safes in UK public sector"
+      },
+      {
+        "framework": "NIST Privacy Framework 1.0",
+        "alignment_level": "partial",
+        "notes": "GOVERN, IDENTIFY, and CONTROL functions well-covered; COMMUNICATE partially"
+      },
+      {
+        "framework": "ISO/IEC 27701:2019",
+        "alignment_level": "aspirational"
+      }
+    ]
+  },
+
+  "deployment_context": {
+    "sector_ref": "public_sector",
+    "sub_sector": "official statistics and accredited administrative data research",
+    "data_subjects_jurisdiction": ["UK"],
+    "scale": "production"
+  },
+
+  "regulatory_context": {
+    "applicable_regulations": [
+      {
+        "regulation": "UK GDPR",
+        "jurisdiction": "UK",
+        "relevant_articles": ["Art. 25 (data protection by design)", "Art. 35 (DPIA)", "Art. 89 (research exemptions)"],
+        "alignment_status": "aligned",
+        "gap_notes": "Art. 89 research exemption and statistical purpose basis documented"
+      },
+      {
+        "regulation": "Digital Economy Act 2017",
+        "jurisdiction": "UK",
+        "relevant_articles": ["Part 5 — data sharing for research and statistics"],
+        "alignment_status": "aligned"
+      }
+    ],
+    "standards_alignment": [
+      {
+        "standard": "NIST SP 800-226",
+        "alignment_level": "partial",
+        "notes": "ε=1.0 per-query with advanced composition is consistent with NIST guidelines; legal sufficiency assessment documented separately"
+      },
+      {
+        "standard": "ICO Anonymisation Code of Practice 2022",
+        "alignment_level": "full",
+        "notes": "ONS Safe Outputs guidance is consistent with ICO anonymisation framework"
+      },
+      {
+        "standard": "ICO PETs Guidance 2023",
+        "alignment_level": "full"
+      },
+      {
+        "standard": "ISO/IEC 20889:2018",
+        "alignment_level": "partial"
+      }
+    ]
+  },
+
+  "tooling_candidates": [
+    {
+      "name": "OpenDP",
+      "url": "https://opendp.org/",
+      "primitive_ids": ["DP"],
+      "maturity": "production",
+      "notes": "Reference implementation for DP statistics; used in academic and public sector settings"
+    },
+    {
+      "name": "Google Differential Privacy library (Go/Java/C++/Python)",
+      "url": "https://github.com/google/differential-privacy",
+      "primitive_ids": ["DP"],
+      "maturity": "production"
+    },
+    {
+      "name": "Tumult Analytics",
+      "url": "https://tmlt.io/",
+      "primitive_ids": ["DP"],
+      "maturity": "production",
+      "notes": "Used by U.S. Census Bureau DAS; strong composition accounting support"
+    }
+  ],
+
+  "residual_risks": [
+    {
+      "risk": "Legal sufficiency of DP evidence varies by jurisdiction and regulatory context; ε=1.0 is not universally accepted as 'anonymisation' under data protection law",
+      "severity": "medium",
+      "mitigation_path": "Maintain legal opinion on DP + TRE combination; document that DP is used as a second-factor control alongside TRE governance, not as sole anonymisation mechanism"
+    },
+    {
+      "risk": "Auxiliary data attacks not fully modelled; rich external datasets (voter rolls, social media) could in principle enable linkage attacks on released statistics",
+      "severity": "low",
+      "mitigation_path": "Human output checking provides defence-in-depth; future: TAPAS-style adversarial audit of released outputs"
+    }
+  ],
+
+  "change_log": [
+    {
+      "date": "2026-05-01",
+      "change": "Initial card created as YAPS example",
+      "author": "Privacy Explorer"
+    }
+  ]
+}
