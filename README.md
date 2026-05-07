@@ -134,3 +134,6 @@ The tables above draw on the following works. Full bibliography is available in 
 - Royal Society (2019) — Privacy-preserving digital technologies
 - Sheller et al. (2020) — Federated learning in medical imaging
 - Stadler et al. (2022) — Synthetic data anonymisation groundhog day
+
+## License 
+MIT License: Permission is hereby granted, free of charge, to any person obtaining a copy
