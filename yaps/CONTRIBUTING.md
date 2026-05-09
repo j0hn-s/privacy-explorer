@@ -4,6 +4,8 @@ YAPS is designed to be forked, contested, and extended. The rule set and data fi
 
 Contributions are reviewed and merged periodically by the repository maintainer. Please use the PR workflow described below rather than opening issues requesting real-time responses.
 
+> **On tool contributions and endorsement.** Submitting a tool for inclusion in a YAPS card, rule, or the `tooling_candidates` field of any example carries an implied professional endorsement: you are asserting that the tool is technically sound for the context described, actively maintained, and appropriate for practitioners to consider. Tool submissions are not a vendor listing — they are a form of recommendation. The maintainer will seek independent evidence of production use, peer-reviewed evaluation, or community adoption before merging any new tool entry. Tools that are later found to have significant undisclosed vulnerabilities or that have been abandoned may be removed without notice.
+
 ---
 
 ## What to contribute

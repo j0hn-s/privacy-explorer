@@ -1,8 +1,8 @@
 # Privacy Explorer
 
-A companion repository to the survey paper *Implementation-Centred Privacy-Enhancing Technologies: Mechanisms, Combinations, and Assurance* — providing structured, implementation-centred reference tables for reasoning about PET combinations, deployment maturity, and assurance artefacts.
+A companion repository to the survey paper *Implementation-Centred Privacy-Enhancing Technologies: Mechanisms, Combinations, and Assurance* — providing structured, implementation-centred reference tables for reasoning about PET combinations, deployment maturity, and assurance artefacts, together with YAPS (Yet Another Privacy Sandbox), a practical tool for privacy architecture risk assessment.
 
-> The survey argues that PET viability depends less on technological strength and more on whether privacy claims can be rendered into repeatable, inspectable assurance artefacts. The tables below encode that argument in a relational form: technique primitives → pairwise combinations → three-layer stacks → sector deployment contexts.
+> The survey argues that PET viability depends less on cryptographic strength and more on whether privacy claims can be rendered into repeatable, inspectable assurance artefacts. The tables and cards in this repository encode that argument in a relational and actionable form: technique primitives → pairwise combinations → three-layer stacks → sector deployment contexts → practitioner risk assessments.
 
 > **These tables are suggestive and indicative, not prescriptive.** Maturity stage assessments reflect a reading of available peer-reviewed literature and documented deployments at time of writing. Reasonable experts will disagree — particularly on maturity stages, which are sensitive to sector context, organisational capacity, and the evidence threshold you apply. The [YAML data files](data/) are the canonical source for forking and revising any entry.
 
@@ -12,13 +12,63 @@ A companion repository to the survey paper *Implementation-Centred Privacy-Enhan
 
 | Resource | Purpose |
 |----------|---------|
-| **This file** | Reference tables (T1–T4) rendered as markdown |
-| [DIAGRAM.md](DIAGRAM.md) | Visual diagrams of the same data — ER schema, combination network, sector map |
+| **This file** | Reference tables (T1–T4) and conceptual architecture |
+| [DIAGRAM.md](DIAGRAM.md) | Visual diagrams — ER schema, combination network, sector map, privacy card structure |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute — rules, cards, data entries, tool references |
 | [data/primitives.yaml](data/primitives.yaml) | T1 source data — edit to revise individual technique entries |
 | [data/pairings.yaml](data/pairings.yaml) | T2 source data — edit to add, remove, or contest two-PET pairings |
 | [data/stacks.yaml](data/stacks.yaml) | T3 source data — edit to add or revise three-layer stacks |
 | [data/sectors.yaml](data/sectors.yaml) | T4 source data — edit to revise sector mappings and maturity assessments |
-| [privacy-cards/](privacy-cards/) | Planned: structured per-deployment privacy artefact cards (not yet built) |
+| [yaps/](yaps/) | YAPS — privacy card architecture and risk engine |
+| [yaps/frontend/index.html](yaps/frontend/index.html) | Interactive sandbox — open in a browser, no server required |
+| [yaps/cards/examples/](yaps/cards/examples/) | Example privacy cards: healthcare, public sector, finance |
+| [yaps/rules/rules.yaml](yaps/rules/rules.yaml) | Risk rule set — fork to contest or extend |
+| [yaps/RISK_MODEL.md](yaps/RISK_MODEL.md) | How the risk model works — logic, NIST/NCSC alignment, privacy vs security distinction |
+| [yaps/CARDS_GUIDE.md](yaps/CARDS_GUIDE.md) | Modular card guide — how to add, change, or swap components |
+
+---
+
+## Conceptual Architecture
+
+This repository is structured as three connected layers, each building on the last.
+
+```mermaid
+flowchart LR
+    classDef theory   fill:#e8eaf6,stroke:#3949ab,color:#1a1a1a
+    classDef struct   fill:#fff8e1,stroke:#f9a825,color:#1a1a1a,font-weight:bold
+    classDef practice fill:#e8f5e9,stroke:#2e7d32,color:#1a1a1a,font-weight:bold
+    classDef artefact fill:#fce4ec,stroke:#c62828,color:#1a1a1a
+
+    PAPER["Survey Paper\n— theoretical foundation —\nPET typologies · assurance\nargument · maturity model"]:::theory
+
+    subgraph EXPLORER["Explorer Tables  ·  README + DIAGRAM + data/"]
+        direction TB
+        T1["T1 — PET Primitives\nwhat each technique does\nand what artefacts it requires"]:::struct
+        T2["T2 — Two-PET Pairings\nhow techniques combine\nand where gaps arise"]:::struct
+        T3["T3 — Three-PET Stacks\nproduction patterns with\nlayered assurance narratives"]:::struct
+        T4["T4 — Sector Contexts\nwhere patterns are deployed\nand what maturity looks like"]:::struct
+        T1 --> T2 --> T3 --> T4
+    end
+
+    subgraph YAPS["YAPS  ·  yaps/"]
+        direction TB
+        CARD["Privacy Card\ncommitment to a specific\narchitecture in a specific context"]:::practice
+        ENGINE["Rule Engine\n20 rules · 6 categories\nIFACE · COMP · ASSUR\nGOV · SECTOR · REG"]:::practice
+        CARD --> ENGINE
+    end
+
+    REPORT["Risk Report\ngovernance artefact\n🔴 RED / 🟡 AMBER / 🟢 GREEN\nartefact checklist · reg. pointers"]:::artefact
+
+    PAPER -->|"informs maturity\nassessments and\nassurance argument"| EXPLORER
+    EXPLORER -->|"T1–T4 IDs cross-\nreferenced in\nevery card"| CARD
+    ENGINE -->|"produces"| REPORT
+```
+
+**Layer 1 — Survey paper.** The theoretical foundation: PET typologies, the assurance maturity argument, the claim that deployment viability is determined by whether artefacts can be rendered repeatable and inspectable.
+
+**Layer 2 — Explorer tables (T1–T4).** The argument encoded structurally. T1 defines what each PET does and what evidence it requires. T2 maps how pairs interact and where gaps arise. T3 records the three-layer stacks that appear in high-governance deployments. T4 situates those stacks in sector and maturity context. The YAML data files are the canonical source — fork them to contest any entry.
+
+**Layer 3 — YAPS.** The argument operationalised at the level of a specific deployment. A Privacy Card commits to a concrete architecture; the rule engine surfaces what assurance, governance, and regulatory gaps that commitment entails. The connection is explicit: every card carries foreign-key references back to T1–T4, anchoring the risk report to the same evidence base as the tables.
 
 ---
 
@@ -41,6 +91,7 @@ The base registry. All IDs in T2–T4 reference the `ID` column here. Algorithmi
 | `SYN` | Synthetic Data | Algorithmic | Privacy contingent on generator, leakage controls, release interface, and downstream context | Disclosure-risk evaluation, utility benchmark, attack-based audit (e.g. membership inference), generation parameters | Validation burden; regulator and user acceptance | High uptake; uneven assurance maturity across deployments |
 | `FL` | Federated Learning / Distributed Analytics | Architectural | Participants semi-trusted; coordinator honest-but-curious; updates may leak; poisoning risk | Training protocol, aggregation rules, convergence/robustness reports, audit logs | Communication rounds; non-IID data effects; coordination overhead | Pilot-to-operational in selected sectors, particularly health and technology |
 | `TEE` | Trusted Execution Environment | Architectural | Trust in hardware vendor, attestation chain, and implementation; OS may be hostile | Attestation report, enclave measurement, dependency manifest, side-channel mitigations | Vendor trust; enclave memory limits; operational key management | Commercially deployed (cloud TEEs); assurance remains layered |
+| `TRE` | Trusted Research Environment | Architectural | Institutional trust plus layered technical and procedural safeguards; Five Safes framework | Access audit logs, output checking workflow, data governance documentation, safe outputs policy | Governance latency; human review throughput | Mature in UK public sector; model for audit-ready PET deployment |
 
 ---
 
@@ -101,18 +152,48 @@ The maturity stages referenced in T4 are defined as follows. Technical robustnes
 
 ---
 
+## YAPS — Privacy Card Architecture
+
+YAPS (Yet Another Privacy Sandbox) is the practitioner-facing component of this repository. Where the explorer tables describe *what exists and how it combines*, YAPS asks: *what happens when you commit to a specific architecture in a specific context?*
+
+A **Privacy Card** is a structured JSON document with five abstracted layers, each independently configurable:
+
+| Layer | What it records | Explorer anchor |
+|-------|----------------|-----------------|
+| **Data layer** | What data is being processed, its sensitivity, linkage risks, Solid/access control intent | Data profile schema |
+| **PET layer** | Which primitives are in use, their roles, tooling, and parameters | T1 `primitive_id` |
+| **Assurance layer** | Which artefacts must exist and their current status | T2/T3 artefact lists |
+| **Governance layer** | Output controls, audit logs, DPIA, frameworks applied | T4 assurance posture |
+| **Regulatory layer** | Applicable regulations and standards alignment | NIST, ICO, GDPR |
+
+The **risk engine** evaluates a card against 20 rules and produces a traffic-light report (🔴 RED / 🟡 AMBER / 🟢 GREEN). The **interactive frontend** lets practitioners compose and evaluate architectures in a browser without any tooling. Full documentation is in [yaps/](yaps/).
+
+---
+
 ## Repository Structure
 
 ```
 privacy-explorer/
-├── README.md              # This file — Section 4 reference tables
-├── privacy-cards/         # Planned: structured privacy card artefacts (not yet built)
-└── survey_paper_notes.txt # Source survey manuscript notes
+├── README.md              # This file — conceptual map and reference tables
+├── CONTRIBUTING.md        # Contribution guide for the whole repository
+├── DIAGRAM.md             # Mermaid diagrams: relational schema, combination
+│                          #   network, sector map, privacy card architecture
+├── data/
+│   ├── primitives.yaml    # T1 canonical source
+│   ├── pairings.yaml      # T2 canonical source
+│   ├── stacks.yaml        # T3 canonical source
+│   └── sectors.yaml       # T4 canonical source
+└── yaps/
+    ├── README.md          # YAPS overview and architecture
+    ├── CONTRIBUTING.md    # YAPS contribution guide
+    ├── RISK_MODEL.md      # Risk logic, rule narratives, NIST/NCSC alignment
+    ├── CARDS_GUIDE.md     # Modular card guide with component swap examples
+    ├── schemas/           # JSON Schemas: privacy_card + data_profile
+    ├── rules/rules.yaml   # Rule set — fork to contest or extend
+    ├── engine/            # risk_engine.py — Python CLI evaluator
+    ├── cards/             # examples/ and templates/
+    └── frontend/          # index.html — single-file interactive sandbox
 ```
-
-### `privacy-cards/`
-
-Planned component. A privacy card is a structured artefact that accompanies any PET-protected asset (model, dataset, pipeline, or query service) and records what mechanisms were used, how they were parameterised, what evidence exists, and what residual risks remain. Key fields under consideration include: threat model and trust assumptions, mechanism parameters and toolchain versions, assurance artefacts, utility and performance metrics, governance mapping, residual risks, and change log.
 
 ---
 
@@ -120,20 +201,45 @@ Planned component. A privacy card is a structured artefact that accompanies any 
 
 The tables above draw on the following works. Full bibliography is available in the survey paper.
 
-- Abadi et al. (2016) — Deep learning with differential privacy
-- Bonawitz et al. (2017) — Practical secure aggregation for FL
-- Costan & Devadas (2016) — Intel SGX explained
+**Foundational theory**
 - Dwork & Roth (2014) — Algorithmic foundations of differential privacy
-- Ernstberger et al. (2023) — zk-Bench: benchmarking SNARKs
 - Evans et al. (2018) — A pragmatic introduction to secure MPC
-- Halevi & Shoup (2020) — Homomorphic encryption performance
+- Costan & Devadas (2016) — Intel SGX explained
+
+**Federated learning**
+- McMahan et al. (2017) — Communication-efficient learning of deep networks (FedAvg)
 - Kairouz et al. (2021) — Advances and open problems in federated learning
+- Bonawitz et al. (2017) — Practical secure aggregation for federated learning
+- Hard et al. (2018) — Federated learning for mobile keyboard prediction (Google Gboard)
+- Soltan et al. (2024) — NHS FLIP: federated learning in health
+
+**Differential privacy in deployment**
+- Abadi et al. (2016) — Deep learning with differential privacy (DP-SGD)
 - McKenna et al. (2021) — Winning the NIST DP synthetic data competition
+- U.S. Census Bureau (2021) — 2020 Disclosure Avoidance System
+
+**Synthetic data and re-identification**
+- Stadler et al. (2022) — Synthetic data anonymisation groundhog day
+- Houssiau et al. (2022) — TAPAS: tricks to accelerate privacy-relevant audits
+- Carlini et al. (2019) — The secret sharer: evaluating generative model memorisation
+
+**Zero-knowledge proofs**
+- Ben-Sasson et al. (2022) — Succinct non-interactive zero-knowledge proofs
+- Ernstberger et al. (2023) — zk-Bench: standardised benchmarking of ZKPs
+
+**Homomorphic encryption**
+- Halevi & Shoup (2020) — Design and implementation of HElib
+
+**Governance and standards**
+- NIST SP 800-226 (Draft, 2023) — Guidelines for evaluating differential privacy guarantees
+- NIST Privacy Framework 1.0 (2020)
+- ICO Anonymisation Code of Practice (2022)
+- ICO PETs Guidance (2023)
 - OECD (2023) — Emerging Privacy-Enhancing Technologies
 - ONS (2021–2024) — Safe Outputs and Secure Research Service guidance
+- Goldacre Review (2022) — Better, broader, safer uses of health data
 - Royal Society (2019) — Privacy-preserving digital technologies
-- Sheller et al. (2020) — Federated learning in medical imaging
-- Stadler et al. (2022) — Synthetic data anonymisation groundhog day
 
-## License 
-MIT License: Permission is hereby granted, free of charge, to any person obtaining a copy
+**Healthcare federated deployments**
+- Sheller et al. (2020) — Federated learning in medical imaging
+- OpenSAFELY / Bennett Institute documentation

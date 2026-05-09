@@ -190,6 +190,103 @@ Contributions that are most useful:
 
 ---
 
+## Diagram 4 — Privacy Card Architecture
+
+How a Privacy Card relates to the T1–T4 explorer tables and how its five layers compose into a risk assessment. This diagram is the visual counterpart to [yaps/CARDS_GUIDE.md](yaps/CARDS_GUIDE.md).
+
+### 4a — Card layers and explorer anchors
+
+Each Privacy Card layer has an explicit cross-reference back to the explorer tables. The risk engine evaluates rules against the card and produces findings anchored to specific layers.
+
+```mermaid
+flowchart TD
+    classDef layer fill:#1a1d27,stroke:#5b7bff,color:#d4d8f0,font-weight:bold
+    classDef explorer fill:#fff8e1,stroke:#f9a825,color:#1a1a1a
+    classDef engine fill:#fce4ec,stroke:#c62828,color:#1a1a1a
+    classDef finding fill:#e8f5e9,stroke:#2e7d32,color:#1a1a1a
+
+    subgraph CARD["Privacy Card (JSON document)"]
+        direction TB
+        L5["Layer 5 — REGULATORY\napplicable regulations\nstandards alignment"]:::layer
+        L4["Layer 4 — GOVERNANCE\noutput controls · audit log\nDPIA · frameworks applied"]:::layer
+        L3["Layer 3 — ASSURANCE\nrequired artefacts · status\nmaturity stage"]:::layer
+        L2["Layer 2 — PET LAYER\nprimitive IDs · tooling\nparameters · trust model"]:::layer
+        L1["Layer 1 — DATA LAYER\ndata categories · sensitivity\nlinkage risks · Solid intent"]:::layer
+    end
+
+    T1["T1 — Primitives\nprimitive_id"]:::explorer
+    T2["T2 — Pairings\npairing_ref"]:::explorer
+    T3["T3 — Stacks\nstack_ref"]:::explorer
+    T4["T4 — Sectors\nsector_ref"]:::explorer
+
+    ENGINE["Rule Engine\n20 rules · 6 categories"]:::engine
+
+    RED["🔴 RED\nblocking gap"]:::finding
+    AMBER["🟡 AMBER\nnotable gap"]:::finding
+    GREEN["🟢 GREEN\nbest practice"]:::finding
+
+    L2 -->|"primitive_id"| T1
+    L2 -->|"pairing_ref"| T2
+    L2 -->|"stack_ref"| T3
+    L4 -->|"sector_ref"| T4
+
+    CARD --> ENGINE
+    ENGINE --> RED & AMBER & GREEN
+```
+
+### 4b — Module swap logic
+
+A card is built from independently swappable modules. Changing one module may trigger different rule findings without affecting others. This diagram shows how the three most common module swaps flow through the rule categories.
+
+```mermaid
+flowchart LR
+    classDef module fill:#e3f2fd,stroke:#1565c0,color:#1a1a1a,font-weight:bold
+    classDef rule   fill:#fff8e1,stroke:#f9a825,color:#1a1a1a
+    classDef effect fill:#e8f5e9,stroke:#2e7d32,color:#1a1a1a
+
+    TOOL["Tool swap\ne.g. AWS Nitro → Azure SEV-SNP\nor TF Privacy → OpenDP"]:::module
+    PARAM["Parameter change\ne.g. ε 4.0 → 1.0\nor add MPC to FL+DP"]:::module
+    GOV["Governance change\ne.g. add TRE layer\nor upgrade pilot → production"]:::module
+
+    ASSUR["ASSUR rules\nartefact format changes\nwith tool vendor"]:::rule
+    COMP["COMP rules\nε change affects\ncomposition accounting"]:::rule
+    GOVR["GOV + SECTOR rules\nTRE resolves SECTOR-001/002\nGOV-002 resolves"]:::rule
+
+    RERUN["Re-run risk engine\npython risk_engine.py card.json --full"]:::effect
+
+    TOOL --> ASSUR --> RERUN
+    PARAM --> COMP --> RERUN
+    GOV --> GOVR --> RERUN
+```
+
+### 4c — Three example cards: risk profiles compared
+
+The three example cards in `yaps/cards/examples/` represent three distinct risk profiles across the same layered architecture. This diagram shows how different module choices produce different findings.
+
+```mermaid
+flowchart TD
+    classDef card   fill:#1a2040,stroke:#5b7bff,color:#d4d8f0
+    classDef red    fill:#1f0a0a,stroke:#e05c5c,color:#e05c5c,font-weight:bold
+    classDef amber  fill:#1f1400,stroke:#e8a045,color:#e8a045,font-weight:bold
+    classDef green  fill:#0a1f14,stroke:#4caf7d,color:#4caf7d,font-weight:bold
+
+    HC["Healthcare\nFL + TEE + DP\nS-01 · AMBER"]:::card
+    PS["Public Sector\nTRE + DP\nP-07 · GREEN"]:::card
+    FI["Finance\nTEE + MPC\nP-05 pilot · RED"]:::card
+
+    HC_F["COMP-002 FL+DP without MPC\nCOMP-003 dual trust anchors\nCOMP-004 composability\nSECTOR-001 clinical validity"]:::amber
+    PS_F["REG-001 NIST SP 800-226\nREG-002 ICO PETs guidance\n(best practice only)"]:::green
+    FI_F["ASSUR-001 attestation absent\n(pilot — not yet established)"]:::red
+
+    HC --> HC_F
+    PS --> PS_F
+    FI --> FI_F
+```
+
+> **Reading the card comparison.** These findings reflect the example cards as written, not the patterns in the abstract. The public sector card is GREEN because the TRE + DP combination is well-documented with existing artefacts. The healthcare card is AMBER because the S-01 pattern has real but manageable gaps (coordinator visibility, composability documentation). The finance card is RED because it is an early pilot with attestation not yet established — the finding reflects deployment stage, not the P-05 pattern itself.
+
+---
+
 ## Suggested Further Iterations
 
 The following changes would materially strengthen this resource. They are ordered roughly by impact.
