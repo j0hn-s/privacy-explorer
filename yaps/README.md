@@ -132,11 +132,13 @@ Regulatory mapping (GDPR, HIPAA, sector-specific) is handled at the card level v
 
 ---
 
-## Data Profile and Solid Integration
+## Data Profile and decentralised-storage integration
 
 Each Privacy Card can optionally reference a **Data Profile** ([schemas/data_profile.schema.json](schemas/data_profile.schema.json)) that records the nature of the data being processed, linkage risks, and access control intent.
 
-The data profile includes a `solid_integration` block for recording [Solid Pod](https://github.com/solid/solid)-compatible access control intent, following the WebID-OIDC and ACL patterns used in [OXFORDIA-node](https://github.com/OXFORDIA-project/OXFORDIA-node). This is a **record of intent**, not a runtime integration — YAPS does not connect to any live Solid server. The field documents that data-level access control is planned and points to the relevant Pod location and ACL policy.
+The framework is architecture-agnostic, but speaks particularly clearly to **decentralised storage models** where data control sits with the data subject and computation crosses pod, institutional, or jurisdictional boundaries. [Solid](https://github.com/solid/solid) is the canonical example: its WebID-OIDC identity layer, ACL-based access control, and per-pod governance produce exactly the explicit, inspectable artefacts that YAPS's IFACE (interface) and GOV (governance) rule categories are designed to evaluate. Federated statistical-compute deployments built on top of Solid expose a per-pod governance surface that maps directly onto a Privacy Card's `governance_controls` and `solid_integration` fields.
+
+The `solid_integration` block on a Privacy Card is a **record of intent**, not a runtime integration — YAPS does not connect to any live Solid server. The field documents that data-level access control is planned and points to the relevant Pod location and ACL policy.
 
 Future development: live risk profiling against a Solid Pod's published data profile, enabling the engine to evaluate cards against actual data properties rather than self-reported fields.
 
