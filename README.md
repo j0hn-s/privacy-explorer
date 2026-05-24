@@ -1,80 +1,121 @@
 # Privacy Explorer
 
-A companion repository to the survey paper *Implementation-Centred Privacy-Enhancing Technologies: Mechanisms, Combinations, and Assurance* — providing structured, implementation-centred reference tables for reasoning about PET combinations, deployment maturity, and assurance artefacts, together with YAPS (Yet Another Privacy Sandbox), a practical tool for privacy architecture risk assessment.
+A companion repository to the survey paper *Survey of PETs Adoption in Real-World Applications* (Smith, 2026) — providing structured, implementation-centred reference materials for reasoning about PET combinations, deployment maturity, and assurance artefacts, together with **YAPS** (Yet Another Privacy Sandbox), a conceptual risk-assessment tool for privacy architecture decisions.
 
-> The survey argues that PET viability depends less on cryptographic strength and more on whether privacy claims can be rendered into repeatable, inspectable assurance artefacts. The tables and cards in this repository encode that argument in a relational and actionable form: technique primitives → pairwise combinations → three-layer stacks → sector deployment contexts → practitioner risk assessments.
+> The survey argues that PET viability depends less on cryptographic strength and more on whether privacy claims can be rendered into repeatable, inspectable assurance artefacts. This repository encodes that argument in two complementary forms: a **problem-first index** (T0 — common exposure problems) and a **technique-first set of relational tables** (T1–T4 — primitives, pairings, stacks, sector contexts).
 
-> **These tables are suggestive and indicative, not prescriptive.** Maturity stage assessments reflect a reading of available peer-reviewed literature and documented deployments at time of writing. Reasonable experts will disagree — particularly on maturity stages, which are sensitive to sector context, organisational capacity, and the evidence threshold you apply. The [YAML data files](data/) are the canonical source for forking and revising any entry.
+> **These materials are suggestive and indicative, not prescriptive.** Maturity stage assessments reflect a reading of available peer-reviewed literature and documented deployments at time of writing. Reasonable experts will disagree. The [YAML data files](data/) are the canonical source for forking and revising any entry.
+
+**How to cite this repository:** see [CITATION.cff](CITATION.cff). Please cite both this repository and the survey paper.
 
 ---
 
 ## Navigation
 
 | Resource | Purpose |
-|----------|---------|
-| **This file** | Reference tables (T1–T4) and conceptual architecture |
-| [DIAGRAM.md](DIAGRAM.md) | Visual diagrams — ER schema, combination network, sector map, privacy card structure |
+|---|---|
+| **This file** | Conceptual architecture and reference tables (T0–T4) |
+| [GLOSSARY.md](GLOSSARY.md) | Formalised terms used across the framework, with primary-source citations |
+| [EXPOSURE_PROBLEMS.md](EXPOSURE_PROBLEMS.md) | T0 — the problem-first index complementing T1–T4 |
+| [STEPWISE_RISK.md](STEPWISE_RISK.md) | The methodology for constructing privacy cards: stepwise-from-private |
+| [DIAGRAM.md](DIAGRAM.md) | Visual diagrams — ER schema, combination network, sector map, card architecture |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute — rules, cards, data entries, tool references |
-| [data/primitives.yaml](data/primitives.yaml) | T1 source data — edit to revise individual technique entries |
-| [data/pairings.yaml](data/pairings.yaml) | T2 source data — edit to add, remove, or contest two-PET pairings |
-| [data/stacks.yaml](data/stacks.yaml) | T3 source data — edit to add or revise three-layer stacks |
-| [data/sectors.yaml](data/sectors.yaml) | T4 source data — edit to revise sector mappings and maturity assessments |
+| [CITATION.cff](CITATION.cff) | Citation metadata for the repository |
+| [MANUSCRIPT_SUGGESTIONS.md](MANUSCRIPT_SUGGESTIONS.md) | Recommendations for survey-paper integration; complementary positioning |
+| [workshops/](workshops/) | Workshop materials (W1–W4) for testing the framework with practitioners |
+| [data/exposure_problems.yaml](data/exposure_problems.yaml) | T0 source data |
+| [data/primitives.yaml](data/primitives.yaml) | T1 source data — primitives including DP-L (local) and DP-C (central) variants |
+| [data/pairings.yaml](data/pairings.yaml) | T2 source data — two-PET pairings, aligned with survey paper Table 4.2 |
+| [data/stacks.yaml](data/stacks.yaml) | T3 source data — three-PET stacks |
+| [data/sectors.yaml](data/sectors.yaml) | T4 source data — sector mappings with idiosyncratic constraints |
 | [yaps/](yaps/) | YAPS — privacy card architecture and risk engine |
 | [yaps/frontend/index.html](yaps/frontend/index.html) | Interactive sandbox — open in a browser, no server required |
 | [yaps/cards/examples/](yaps/cards/examples/) | Example privacy cards: healthcare, public sector, finance |
 | [yaps/rules/rules.yaml](yaps/rules/rules.yaml) | Risk rule set — fork to contest or extend |
 | [yaps/RISK_MODEL.md](yaps/RISK_MODEL.md) | How the risk model works — logic, NIST/NCSC alignment, privacy vs security distinction |
-| [yaps/CARDS_GUIDE.md](yaps/CARDS_GUIDE.md) | Modular card guide — how to add, change, or swap components |
+| [yaps/CARDS_GUIDE.md](yaps/CARDS_GUIDE.md) | Modular card guide |
 
 ---
 
 ## Conceptual Architecture
 
-This repository is structured as three connected layers, each building on the last.
+This repository is structured as three connected layers, each building on the last. The framework can be entered from either a **problem-first** direction (T0 → responding combinations) or a **technique-first** direction (T1 → T2 → T3 → T4) depending on the practitioner's task.
 
 ```mermaid
 flowchart LR
     classDef theory   fill:#e8eaf6,stroke:#3949ab,color:#1a1a1a
     classDef struct   fill:#fff8e1,stroke:#f9a825,color:#1a1a1a,font-weight:bold
+    classDef problem  fill:#ffe8d6,stroke:#d97706,color:#1a1a1a,font-weight:bold
     classDef practice fill:#e8f5e9,stroke:#2e7d32,color:#1a1a1a,font-weight:bold
     classDef artefact fill:#fce4ec,stroke:#c62828,color:#1a1a1a
 
     PAPER["Survey Paper\n— theoretical foundation —\nPET typologies · assurance\nargument · maturity model"]:::theory
 
-    subgraph EXPLORER["Explorer Tables  ·  README + DIAGRAM + data/"]
+    subgraph EXPLORER["Explorer Materials  ·  README + data/ + GLOSSARY + EXPOSURE_PROBLEMS"]
         direction TB
+        T0["T0 — Common Exposure Problems\nproblem-first index;\nroutes to PET responses"]:::problem
         T1["T1 — PET Primitives\nwhat each technique does\nand what artefacts it requires"]:::struct
         T2["T2 — Two-PET Pairings\nhow techniques combine\nand where gaps arise"]:::struct
         T3["T3 — Three-PET Stacks\nproduction patterns with\nlayered assurance narratives"]:::struct
-        T4["T4 — Sector Contexts\nwhere patterns are deployed\nand what maturity looks like"]:::struct
+        T4["T4 — Sector Contexts\nidiosyncratic constraints,\ndeployment maturity"]:::struct
         T1 --> T2 --> T3 --> T4
+        T0 -->|"each EP names\nresponding T1/T2/T3 entries"| T2
     end
 
     subgraph YAPS["YAPS  ·  yaps/"]
         direction TB
-        CARD["Privacy Card\ncommitment to a specific\narchitecture in a specific context"]:::practice
-        ENGINE["Rule Engine\n20 rules · 6 categories\nIFACE · COMP · ASSUR\nGOV · SECTOR · REG"]:::practice
+        CARD["Privacy Card\nstepwise-from-private chain of\narchitectural commitments"]:::practice
+        ENGINE["Rule Engine\nIFACE · COMP · ASSUR\nGOV · SECTOR · REG"]:::practice
         CARD --> ENGINE
     end
 
     REPORT["Risk Report\ngovernance artefact\n🔴 RED / 🟡 AMBER / 🟢 GREEN\nartefact checklist · reg. pointers"]:::artefact
 
     PAPER -->|"informs maturity\nassessments and\nassurance argument"| EXPLORER
-    EXPLORER -->|"T1–T4 IDs cross-\nreferenced in\nevery card"| CARD
+    EXPLORER -->|"T0/T1–T4 IDs cross-\nreferenced in\nevery card"| CARD
     ENGINE -->|"produces"| REPORT
 ```
 
-**Layer 1 — Survey paper.** The theoretical foundation: PET typologies, the assurance maturity argument, the claim that deployment viability is determined by whether artefacts can be rendered repeatable and inspectable.
+**Layer 1 — Survey paper.** The theoretical foundation: PET typologies, the assurance-gap argument, the claim that deployment viability is determined by whether artefacts can be rendered repeatable and inspectable.
 
-**Layer 2 — Explorer tables (T1–T4).** The argument encoded structurally. T1 defines what each PET does and what evidence it requires. T2 maps how pairs interact and where gaps arise. T3 records the three-layer stacks that appear in high-governance deployments. T4 situates those stacks in sector and maturity context. The YAML data files are the canonical source — fork them to contest any entry.
+**Layer 2 — Explorer materials (T0–T4).** The argument encoded structurally.
+- **T0** ([EXPOSURE_PROBLEMS.md](EXPOSURE_PROBLEMS.md)) is a **problem-first** index — for practitioners who have a concrete exposure problem and want to know which PETs respond.
+- **T1–T4** are the **technique-first** tables — for readers who want a relational view of mechanisms, combinations, stacks, and sectors.
+- The two views complement each other; T0 and T2 are cross-linked by foreign keys.
 
-**Layer 3 — YAPS.** The argument operationalised at the level of a specific deployment. A Privacy Card commits to a concrete architecture; the rule engine surfaces what assurance, governance, and regulatory gaps that commitment entails. The connection is explicit: every card carries foreign-key references back to T1–T4, anchoring the risk report to the same evidence base as the tables.
+**Layer 3 — YAPS.** The argument operationalised at the level of a specific deployment. A Privacy Card commits to a concrete architecture using the **[stepwise-from-private](STEPWISE_RISK.md)** construction methodology: each PET-enabled access pattern is recorded as an explicit deviation from a completely-private baseline, with a named purpose, exposure problem, PET response, trust assumption, assurance anchor, and residual risk. The rule engine surfaces gaps in the resulting chain.
+
+**Cross-cutting:** [GLOSSARY.md](GLOSSARY.md) defines a small, citable vocabulary used consistently across all layers. The [workshops/](workshops/) directory provides materials for testing the framework with practitioners.
 
 ---
 
-## Section 4 — Comparative PET Reference Tables
+## Reference materials — T0 through T4
 
-The four tables below are designed to be read relationally. Each table extends the previous: **T1** defines PET primitives; **T2** pairs them; **T3** builds three-layer stacks from T2 pairings; **T4** maps those stacks to sectors. Cross-references use the short IDs defined in T1 and T2.
+The materials below are designed to be read relationally. **T0** is the problem-first entry point: name your exposure problem, route to responding PETs. **T1–T4** are the technique-first entry point: see what each PET does, how pairs interact, what three-layer stacks exist, how sectors use them. The two views are linked by foreign keys.
+
+Cross-references use the short IDs defined in [data/exposure_problems.yaml](data/exposure_problems.yaml) (T0), [data/primitives.yaml](data/primitives.yaml) (T1), and the subsequent tables.
+
+---
+
+### T0 — Common Exposure Problems (problem-first index)
+
+The full T0 index lives in [EXPOSURE_PROBLEMS.md](EXPOSURE_PROBLEMS.md), with canonical entries in [data/exposure_problems.yaml](data/exposure_problems.yaml). A summary:
+
+| EP | Exposure problem | Primary responding PETs | Dominant assurance anchor |
+|---|---|---|---|
+| `EP-01` | Aggregated outputs may reveal individual records | `DP-C`, `P-07`, `P-08` | Privacy accountant + parameter manifest |
+| `EP-02` | Data cannot leave its source for joint computation | `MPC`, `HE`, `FL`, `P-02` | Adversary-model declaration + protocol spec |
+| `EP-03` | Computation must happen inside an untrusted environment | `TEE`, `HE`, `P-04` | Attestation + side-channel mitigation |
+| `EP-04` | Distributed model training where updates may leak training data | `P-01`, `P-02`, `P-03`, `S-01`, `S-03` | Secure-aggregation spec + privacy accountant |
+| `EP-05` | Need to share or republish a dataset-shaped artefact | `SYN`, `P-08`, `S-04` | Disclosure-risk evaluation + utility benchmark |
+| `EP-06` | Repeated, governed access to sensitive data for research | `TRE`, `P-07`, `S-02` | Output-clearance log + accreditation records |
+| `EP-07` | Prove a property without revealing the underlying data | `ZKP`, `P-06` | Circuit definition + verification parameters |
+| `EP-08` | Cumulative privacy loss across multiple releases | `DP-C`, `DP-L` | Privacy accountant with composition theorem named |
+| `EP-09` | Re-identification from quasi-identifiers in low-dimensional release | `DP-C`, `SYN`, `TRE` | Singling-out test + motivated-intruder simulation |
+| `EP-10` | Lifecycle controls — withdrawal, retraining, deprecated artefacts | `SYN`, machine unlearning | Change log linked to model versions |
+| `EP-11` | Cross-jurisdictional analytics with conflicting legal regimes | `FL`, `P-04`, `S-01` | Jurisdictional applicability + DPIA per jurisdiction |
+
+The T0 index is intentionally a working set, intended to be revised through the [workshops](workshops/). It is **complementary** to T1–T4, not a replacement.
 
 ---
 
@@ -82,33 +123,39 @@ The four tables below are designed to be read relationally. Each table extends t
 
 The base registry. All IDs in T2–T4 reference the `ID` column here. Algorithmic PETs are shown first, followed by architectural PETs.
 
+Trust-model and assurance-artefact terms are defined in [GLOSSARY.md](GLOSSARY.md).
+
 | ID | Technique | Family | Typical Trust Model | Core Assurance Artefacts | Dominant Bottleneck | Typical Maturity |
 |----|-----------|--------|---------------------|--------------------------|---------------------|------------------|
-| `DP` | Differential Privacy | Algorithmic | Correct parameterisation and accounting required; no fully trusted curator needed for local DP | Privacy budget/accountant, parameter manifest, composition assumptions, release log | Utility loss; parameter governance; privacy budget composition | Standardised assurance in official statistics and consumer telemetry |
-| `MPC` | Secure Multi-Party Computation | Algorithmic | Protocol-dependent adversary model; no single trusted curator | Protocol specification, adversary model declaration, test vectors, implementation audit | Communication and compute overhead | Selective production in finance, genomics, benchmarking |
-| `HE` | Homomorphic Encryption | Algorithmic | Security rests on scheme assumptions and parameter regime | Parameter set, security level, precision bounds, benchmark evidence | Compute cost, memory, workload fit | Emerging; niche production with growing hardware co-design |
-| `ZKP` | Zero-Knowledge Proofs | Algorithmic | Zero-knowledge depends on proof system, circuit correctness, and setup model | Circuit definition, verification parameters, trusted-setup transcript (if any), benchmark reports | Prover cost; engineering and circuit complexity | Maturing in verification-heavy ecosystems (blockchain); limited elsewhere |
-| `SYN` | Synthetic Data | Algorithmic | Privacy contingent on generator, leakage controls, release interface, and downstream context | Disclosure-risk evaluation, utility benchmark, attack-based audit (e.g. membership inference), generation parameters | Validation burden; regulator and user acceptance | High uptake; uneven assurance maturity across deployments |
-| `FL` | Federated Learning / Distributed Analytics | Architectural | Participants semi-trusted; coordinator honest-but-curious; updates may leak; poisoning risk | Training protocol, aggregation rules, convergence/robustness reports, audit logs | Communication rounds; non-IID data effects; coordination overhead | Pilot-to-operational in selected sectors, particularly health and technology |
-| `TEE` | Trusted Execution Environment | Architectural | Trust in hardware vendor, attestation chain, and implementation; OS may be hostile | Attestation report, enclave measurement, dependency manifest, side-channel mitigations | Vendor trust; enclave memory limits; operational key management | Commercially deployed (cloud TEEs); assurance remains layered |
-| `TRE` | Trusted Research Environment | Architectural | Institutional trust plus layered technical and procedural safeguards; Five Safes framework | Access audit logs, output checking workflow, data governance documentation, safe outputs policy | Governance latency; human review throughput | Mature in UK public sector; model for audit-ready PET deployment |
+| `DP-L` | Differential Privacy — local (LDP) | Algorithmic | Untrusted curator; noise added at source | Per-user privacy accountant, parameter manifest, release log, utility benchmark | Utility loss at population-scale telemetry | Standardised in consumer telemetry (RAPPOR, Apple DP) |
+| `DP-C` | Differential Privacy — central (CDP) | Algorithmic | Trusted curator; noise calibrated to sensitivity at release | Privacy accountant with composition theorem, parameter manifest, sensitivity analysis, release log | Parameter governance; composition accounting across releases | Standardised assurance in some official statistics (US Census 2020 DAS) |
+| `DP` | DP family pointer (see DP-L, DP-C) | Algorithmic | See variant entries | See variant entries | See variant entries | See variant entries |
+| `MPC` | Secure Multi-Party Computation | Algorithmic | Untrusted curator across parties; adversary-model declaration required (semi-honest vs malicious; threshold k-of-n) | Protocol specification, adversary-model declaration, test vectors, implementation audit, communication benchmark | Communication overhead; scales poorly with party count and circuit depth | Selective production in finance, genomics, benchmarking |
+| `HE` | Homomorphic Encryption | Algorithmic | Data owner trusts evaluator only with ciphertext; security rests on lattice hardness | Parameter set + security level, scheme declaration, precision bounds, benchmark suite, library version manifest | Compute cost (10³–10⁵× plaintext); memory; non-linear-op workload fit | Emerging; niche production with growing hardware co-design |
+| `ZKP` | Zero-Knowledge Proofs | Algorithmic | Prover may be malicious; verifier trust anchored in soundness; ZK depends on circuit correctness and setup model | Circuit definition, verification parameters, trusted-setup transcript (if any), benchmark report, circuit audit | Prover cost; engineering complexity; under-constraint risk | Maturing in blockchain / Web3 verifiable infrastructure; limited elsewhere |
+| `SYN` | Synthetic Data | Algorithmic | Privacy contingent on generator, leakage controls, threat model, downstream context | Disclosure-risk evaluation, utility benchmark, attack-based audit (e.g. TAPAS), generation parameter manifest | Validation burden; regulator/procurer acceptance; privacy-utility prediction ex ante | High uptake; uneven assurance maturity across deployments |
+| `FL` | Federated Learning / Distributed Analytics | Architectural | Participants semi-trusted; coordinator honest-but-curious; updates may leak; poisoning risk | Training protocol, aggregation rules, convergence/robustness reports, audit logs, source de-identification statement | Communication rounds; non-IID data; coordination overhead; update leakage | Pilot-to-operational in healthcare and technology |
+| `TEE` | Trusted Execution Environment | Architectural | Hardware-anchored trust; vendor + attestation chain + implementation; OS may be hostile | Attestation report, enclave measurement, dependency manifest, side-channel mitigation declaration, vendor-trust statement | Vendor trust; enclave memory limits; operational key management; side-channel posture | Commercially deployed (cloud TEEs); assurance remains layered |
+| `TRE` | Trusted Research Environment | Architectural | Institutional trust + Five Safes; output checking is first-class, not optional | Access audit logs, output-clearance workflow, data governance documentation, safe outputs policy, Five Safes alignment statement | Governance latency; human review throughput | Mature in UK public sector; model for audit-ready PET deployment |
+
+**Note on DP.** `DP-L` (local) and `DP-C` (central) are distinct primitives with materially different trust assumptions. `DP` is retained as a family pointer for backward compatibility — new cards should reference the specific variant.
 
 ---
 
 ### T2 — Two-PET Pairings
 
-Each row combines two primitives from **T1**. The `Pair ID` is referenced in T3 and T4. Combinations are restricted to those with identifiable assurance regimes and production or near-production use cases.
+Each row combines two primitives from **T1**. The `Pair ID` is referenced in T3 and T4. Combinations are restricted to those with identifiable assurance regimes and production or near-production use cases. The set aligns with the survey paper Table 4.2; each pairing carries a `survey_paper_anchor` field in the YAML pointing to the relevant section.
 
-| Pair ID | PET A → T1 | PET B → T1 | Combination Logic | Required Assurance Artefacts | Key Advantage | Key Shortcoming |
-|---------|-----------|-----------|-------------------|------------------------------|---------------|-----------------|
-| `P-01` | `FL` | `DP` | Distributed training with formal leakage bounds on model updates | Privacy accountant, clipping/noise parameters, convergence monitoring | Formal privacy bound layered onto distributed training; widely benchmarked | Accuracy degradation; accounting complexity; utility loss under tight ε |
-| `P-02` | `FL` | `MPC` | Secure aggregation: coordinator sees only the sum of updates, not individual contributions | Aggregation protocol specification, adversary model, correctness proof | Removes coordinator visibility of per-client updates | Protocol complexity; communication overhead scales with client count |
-| `P-03` | `FL` | `TEE` | Local data retention plus hardware isolation for update aggregation | Attestation evidence, enclave measurement, aggregation protocol audit | Stronger protection for intermediate update state | Hardware vendor trust; enclave memory limits; key management overhead |
-| `P-04` | `TEE` | `DP` | In-use confidentiality plus formal output control: hardware isolates computation, DP bounds release | Attestation report, DP parameter manifest, release log | Clear separation of in-use privacy from output disclosure risk | Dual trust anchors (vendor + parameter governance); composability risk |
-| `P-05` | `TEE` | `MPC` | Hardware isolation reduces MPC coordination and communication cost | Attestation, protocol audit, threat model declaration | Performance gain for some MPC workloads; reduced network exposure | Hybrid assurance narrative harder to audit; enclave memory constraints |
-| `P-06` | `TEE` | `ZKP` | Verifiable execution with hardware-enforced isolation of the prover | Circuit definition, verification keys, attestation report, implementation assurance | Verifiability with reduced intermediate disclosure | Specialised infrastructure; proof generation cost; hybrid assurance complexity |
-| `P-07` | `TRE` | `DP` | Formal output protection within a governed access environment; DP complements human output checking | Output clearance workflow, DP accountant, release policy, access audit logs | Strong fit for public-sector and accredited research settings | Governance latency; sign-off burden; parameter policy requires domain input |
-| `P-08` | `SYN` | `DP` | Formal privacy definition applied to generator training or release, producing defensible synthetic artefacts | DP training/release parameters, privacy/utility evaluation, membership-inference audit | More legally and evidentially defensible synthetic release | Lower fidelity; utility loss is data-dependent and hard to predict ex ante |
+| Pair ID | PET A | PET B | Combination Logic | Survey Anchor | Required Assurance Artefacts | Key Advantage | Key Shortcoming |
+|---|---|---|---|---|---|---|---|
+| `P-01` | `FL` | `DP-C` | Distributed training with formal leakage bounds on model updates or final model | Survey §2.2.1; Table 4.2 row 1 | Privacy accountant, clipping/noise parameters, convergence monitoring, coordinator trust statement | Most extensively documented combination; Gboard production deployment | Accuracy degradation; accounting complexity; without secure aggregation leaves coordinator-visibility gap |
+| `P-02` | `FL` | `MPC` | Secure aggregation: coordinator sees only the cryptographically aggregated sum, not individual updates | Survey §2.2.1 | Aggregation protocol specification, adversary model, dropout handling | Removes coordinator visibility of per-client updates | Communication overhead scales with client count; does not bound info leakage from the aggregate itself |
+| `P-03` | `FL` | `TEE` | Local data retention plus hardware-isolated aggregation server | Survey §2.2.2; Table 4.2 row 2 | Attestation report, enclave measurement, aggregation protocol audit | Stronger protection for intermediate update state | Hardware vendor trust; enclave memory limits; no output-bound guarantee |
+| `P-04` | `TEE` | `DP-C` | In-use confidentiality plus formal output bound | Survey §2.2.2; §3.4 | Attestation report, DP parameter manifest, release log, dual trust-model declaration | Clear separation of in-use privacy from output disclosure risk | Dual trust anchors; composability risk if threat models misaligned |
+| `P-05` | `TEE` | `MPC` | Hardware isolation hosts MPC protocol; WEF cross-bank fraud analytics is the canonical example | Survey §2.2.2; §4.1.3; Table 4.2 row 4 | Attestation, protocol audit, adversary-model declaration, threat-model fusion | Performance gain for some MPC workloads; enables otherwise impractical multi-party tasks | Hybrid assurance narrative harder to audit; combined cryptographic + hardware attack surface |
+| `P-06` | `TEE` | `ZKP` | Hardware-isolated prover with verifiable proof object; ZKML context | Survey §2.1.6 + §2.2.2 (theoretical) | Circuit definition, verification keys, attestation, under-constraint audit | Combines hardware-enforced prover privacy with cryptographic verifiability | Specialised infrastructure; proof cost; limited production deployment |
+| `P-07` | `TRE` | `DP-C` | Formal output protection within a governed access environment | Survey §4.1.2; Table 4.2 row 5 | Output-clearance workflow, DP accountant, release policy, access audit logs, DPIA | Strong fit for public-sector and accredited research settings | Governance latency; parameter policy requires non-technical input; legal sufficiency varies by jurisdiction |
+| `P-08` | `SYN` | `DP-C` | Formal privacy bound applied to generator training or release | Survey §2.1.5; §4.1.2; Table 4.2 row 6 | DP training/release parameter manifest, privacy/utility evaluation, MIA audit, disclosure-risk assessment | More legally and evidentially defensible synthetic release | Lower fidelity; utility loss data-dependent; DP-SGD compounds noise across generation steps |
 
 ---
 
@@ -116,12 +163,12 @@ Each row combines two primitives from **T1**. The `Pair ID` is referenced in T3 
 
 Each row extends a pairing from **T2** with one additional primitive from **T1**. Three-layer stacks arise where governance pressure or regulatory stakes justify the added coordination overhead. The `Stack ID` is referenced in T4.
 
-| Stack ID | Base Pair → T2 | Added Layer → T1 | Full Stack | Rationale | Representative Use Case | Assurance Narrative |
-|----------|---------------|-----------------|------------|-----------|------------------------|---------------------|
-| `S-01` | `P-03` (FL + TEE) | `DP` | FL + TEE + DP | Defence-in-depth for distributed training: local data retention + hardware isolation of aggregation + formal output bounds | NVIDIA FLARE healthcare deployments; NHS federated learning pilots (Soltan et al., 2024) | Attestation confirms enclave integrity; privacy accountant bounds release; protocol audit covers aggregation. Strongest layered assurance for federated analytics at the cost of multi-layer composability risk |
-| `S-02` | `P-07` (TRE + DP) | `TEE` | TRE + TEE + DP | Layered assurance for high-sensitivity governed analytics: institutional access controls + hardware isolation of compute + formal output bounds | ONS Secure Research Service; ADR UK accredited data environments | Governance logs and output clearance cover institutional accountability; attestation covers in-use confidentiality; DP accountant covers statistical release. Audit-ready but operationally costly |
-| `S-03` | `P-02` (FL + MPC) | `DP` | FL + MPC + DP | Secure distributed training with coordinator-blind aggregation and formal per-update privacy bounds; extends P-01 by replacing standard aggregation with cryptographic secure aggregation | Cross-institutional ML with untrusted coordinator; production secure aggregation at scale (Bonawitz et al., 2017) | Aggregation correctness proof + privacy accountant + training protocol documentation. Strongest formal guarantee for cross-party federated settings; communication cost is the binding constraint |
-| `S-04` | `P-08` (SYN + DP) | `TEE` | TEE + SYN + DP | Attested, DP-trained synthetic data generation: enclave protects source data during generator training; DP bounds the release | Controlled synthetic releases in regulated environments; TRE sandbox synthetic data | Attestation covers generation environment integrity; DP parameters cover release disclosure risk; disclosure-risk evaluation covers residual linking risk. Strongest synthetic assurance posture; rarely deployed outside high-sensitivity contexts |
+| Stack ID | Base Pair | Added Layer | Full Stack | Survey Anchor | Representative Use Case | Assurance Narrative |
+|---|---|---|---|---|---|---|
+| `S-01` | `P-03` (FL + TEE) | `DP-C` | FL + TEE + DP-C | Survey Table 4.2 row 3; §4.1.2 | NVIDIA FLARE healthcare deployments; NHS FLIP (Soltan et al. 2024); UK-US federated survival analysis pilot (GDS 2025) | Attestation confirms enclave integrity; privacy accountant bounds release; protocol audit covers aggregation. Strongest layered assurance for federated analytics; multi-layer composability risk |
+| `S-02` | `P-07` (TRE + DP-C) | `TEE` | TRE + TEE + DP-C | Extends survey Table 4.2 row 5; §4.1.2 | ONS Secure Research Service; ADR UK accredited environments; NHS SDE with confidential computing | Governance logs and output clearance cover institutional accountability; attestation covers in-use confidentiality; DP accountant covers statistical release. Audit-ready but operationally costly |
+| `S-03` | `P-02` (FL + MPC) | `DP-C` | FL + MPC + DP-C | Survey §2.2.1 | Cross-institutional ML with untrusted coordinator; cross-device FL at scale (Bonawitz et al. 2017; Ball et al. 2024) | Aggregation correctness proof + privacy accountant + training protocol. Strongest formal guarantee for cross-party federated settings; communication cost is binding |
+| `S-04` | `P-08` (SYN + DP-C) | `TEE` | TEE + SYN + DP-C | Survey §2.1.5 + §2.2.2 (theoretical) | Controlled synthetic releases in high-sensitivity governed environments; TRE-sandboxed synthetic data | Attestation covers generation environment integrity; DP parameters cover release disclosure risk; disclosure-risk evaluation covers residual linking risk. Strongest synthetic assurance posture; rarely deployed |
 
 ---
 
@@ -156,17 +203,21 @@ The maturity stages referenced in T4 are defined as follows. Technical robustnes
 
 YAPS (Yet Another Privacy Sandbox) is the practitioner-facing component of this repository. Where the explorer tables describe *what exists and how it combines*, YAPS asks: *what happens when you commit to a specific architecture in a specific context?*
 
-A **Privacy Card** is a structured JSON document with five abstracted layers, each independently configurable:
+**Card construction follows the [stepwise-from-private methodology](STEPWISE_RISK.md):** each PET-enabled access pattern is recorded as an explicit deviation from a completely-private baseline. The card is the ordered chain of such deviations, each with named purpose, exposure problem, PET response, trust assumption, assurance anchor, and residual risk. This addresses the recursive DPIA critique that asking "what is the privacy risk?" when the risk is unknown does not produce effective mitigation.
+
+A **Privacy Card** is a structured JSON document with five layers, each independently configurable:
 
 | Layer | What it records | Explorer anchor |
-|-------|----------------|-----------------|
-| **Data layer** | What data is being processed, its sensitivity, linkage risks, Solid/access control intent | Data profile schema |
-| **PET layer** | Which primitives are in use, their roles, tooling, and parameters | T1 `primitive_id` |
-| **Assurance layer** | Which artefacts must exist and their current status | T2/T3 artefact lists |
-| **Governance layer** | Output controls, audit logs, DPIA, frameworks applied | T4 assurance posture |
-| **Regulatory layer** | Applicable regulations and standards alignment | NIST, ICO, GDPR |
+|---|---|---|
+| **Data layer** | Data categories, sensitivity, linkage risks, Solid / access-control intent | Data profile schema |
+| **PET layer** | Primitives in use (T1 IDs incl. `DP-L`/`DP-C`), roles, tooling, parameters | T1 `primitive_id` |
+| **Assurance layer** | Required artefacts and their current status | T2 / T3 artefact lists |
+| **Governance layer** | Output controls, audit logs, DPIA, frameworks applied | T4 assurance posture; idiosyncratic constraints |
+| **Regulatory layer** | Applicable regulations, standards alignment, jurisdictional declarations | NIST, ICO, GDPR; T4 legal instruments |
 
-The **risk engine** evaluates a card against 20 rules and produces a traffic-light report (🔴 RED / 🟡 AMBER / 🟢 GREEN). The **interactive frontend** lets practitioners compose and evaluate architectures in a browser without any tooling. Full documentation is in [yaps/](yaps/).
+Cards reference both T0 exposure problems (the rationale for each PET choice) and T1–T4 identifiers (the anchor to the reference base).
+
+The **risk engine** evaluates a card against the rule set in [yaps/rules/rules.yaml](yaps/rules/rules.yaml) and produces a traffic-light report (🔴 RED / 🟡 AMBER / 🟢 GREEN). The **interactive frontend** lets practitioners compose and evaluate architectures in a browser without any tooling. Full documentation is in [yaps/](yaps/).
 
 ---
 
@@ -174,25 +225,40 @@ The **risk engine** evaluates a card against 20 rules and produces a traffic-lig
 
 ```
 privacy-explorer/
-├── README.md              # This file — conceptual map and reference tables
-├── CONTRIBUTING.md        # Contribution guide for the whole repository
-├── DIAGRAM.md             # Mermaid diagrams: relational schema, combination
-│                          #   network, sector map, privacy card architecture
+├── README.md                       # This file — conceptual map and reference materials
+├── GLOSSARY.md                     # Formalised terms with primary-source citations
+├── EXPOSURE_PROBLEMS.md            # T0 — problem-first index
+├── STEPWISE_RISK.md                # Card construction methodology: stepwise-from-private
+├── MANUSCRIPT_SUGGESTIONS.md       # Survey-paper integration notes; complementary positioning
+├── CITATION.cff                    # Citation metadata
+├── CONTRIBUTING.md                 # Contribution guide
+├── DIAGRAM.md                      # Mermaid diagrams: schema, combination network, sector map
 ├── data/
-│   ├── primitives.yaml    # T1 canonical source
-│   ├── pairings.yaml      # T2 canonical source
-│   ├── stacks.yaml        # T3 canonical source
-│   └── sectors.yaml       # T4 canonical source
+│   ├── exposure_problems.yaml      # T0 canonical source
+│   ├── primitives.yaml             # T1 canonical source (DP-L, DP-C variants)
+│   ├── pairings.yaml               # T2 canonical source (survey-paper-anchored)
+│   ├── stacks.yaml                 # T3 canonical source
+│   └── sectors.yaml                # T4 canonical source (idiosyncratic constraints)
+├── workshops/                      # Workshop materials (W1–W4) for testing the framework
+│   ├── README.md
+│   ├── W1-exposure-problems.md
+│   ├── W2-card-construction.md
+│   ├── W3-sector-deepening.md
+│   ├── W4-design-and-visuals.md
+│   ├── OPEN_QUESTIONS.md
+│   ├── DESIGN_DECISIONS.md
+│   ├── FACILITATOR_NOTES.md
+│   └── PARTICIPANT_PROFILES.md
 └── yaps/
-    ├── README.md          # YAPS overview and architecture
-    ├── CONTRIBUTING.md    # YAPS contribution guide
-    ├── RISK_MODEL.md      # Risk logic, rule narratives, NIST/NCSC alignment
-    ├── CARDS_GUIDE.md     # Modular card guide with component swap examples
-    ├── schemas/           # JSON Schemas: privacy_card + data_profile
-    ├── rules/rules.yaml   # Rule set — fork to contest or extend
-    ├── engine/            # risk_engine.py — Python CLI evaluator
-    ├── cards/             # examples/ and templates/
-    └── frontend/          # index.html — single-file interactive sandbox
+    ├── README.md                   # YAPS overview and architecture
+    ├── CONTRIBUTING.md             # YAPS contribution guide
+    ├── RISK_MODEL.md               # Risk logic, rule narratives, NIST/NCSC alignment
+    ├── CARDS_GUIDE.md              # Modular card guide; stepwise-from-private examples
+    ├── schemas/                    # JSON Schemas: privacy_card + data_profile
+    ├── rules/rules.yaml            # Rule set — fork to contest or extend
+    ├── engine/                     # risk_engine.py — Python CLI evaluator
+    ├── cards/                      # examples/ and templates/
+    └── frontend/                   # index.html — single-file interactive sandbox
 ```
 
 ---

@@ -1,0 +1,51 @@
+cff-version: 1.2.0
+title: "Privacy Explorer: An Implementation-Centred Reference for PET Combinations, Sectoral Adoption, and Assurance Artefacts"
+abstract: >
+  Privacy Explorer is a companion repository to a survey of privacy-enhancing
+  technology (PET) adoption in real-world applications. It encodes the
+  survey's central argument — that PET viability is determined by whether
+  privacy claims can be rendered into repeatable, inspectable artefacts —
+  as a set of relational reference tables (PET primitives, two-PET pairings,
+  three-PET stacks, sectoral deployment contexts), a conceptual index of
+  common exposure problems, a glossary of formalised terms, and YAPS, a
+  rule-based assurance-gap tool for assessing specific PET deployments.
+  The repository is intended to support workshops, design exercises, and
+  ongoing cumulative work rather than to constitute a prescriptive standard.
+type: software
+authors:
+  - family-names: Smith
+    given-names: John
+    affiliation: Newton Europe
+    orcid: ""
+keywords:
+  - privacy-enhancing technologies
+  - differential privacy
+  - federated learning
+  - homomorphic encryption
+  - secure multi-party computation
+  - zero-knowledge proofs
+  - synthetic data
+  - trusted execution environment
+  - trusted research environment
+  - assurance
+  - PET adoption
+  - data protection
+  - implementation-centred
+license: "MIT"
+repository-code: "https://github.com/j0hn-s/privacy-explorer"
+url: "https://github.com/j0hn-s/privacy-explorer"
+version: "0.2.0"
+date-released: "2026-05-24"
+preferred-citation:
+  type: software
+  title: "Privacy Explorer (and the YAPS conceptual risk-assessment tool)"
+  authors:
+    - family-names: Smith
+      given-names: John
+      affiliation: Newton Europe
+  year: 2026
+  url: "https://github.com/j0hn-s/privacy-explorer"
+  notes: >
+    The Privacy Explorer repository is the companion artefact to the survey
+    paper "Survey of PETs Adoption in Real-World Applications" (Smith, 2026).
+    Please cite both the repository and the survey when using these materials.
