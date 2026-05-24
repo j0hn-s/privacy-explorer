@@ -1,17 +1,30 @@
 # T4 — Sectoral Deployment Context
 #
-# Schema version: 1.0
+# Schema version: 1.1
 # Cross-references:
 #   primary_stacks[] values must exist in pairings.yaml (PAIRING.id) or
 #   stacks.yaml (STACK.id).
+#   primary_exposure_problems[] values must exist in exposure_problems.yaml (EP.id).
 #   role values: primary = dominant pattern; secondary = common but not leading;
 #                experimental = pilot or niche use
 #
-# IMPORTANT: Sector boundaries are coarse. Sub-sector variation is significant —
-# a 'healthcare' entry covers both cross-institutional research and clinical operational
-# settings, which have different dominant stacks. Splitting into sub-sectors is a
-# planned iteration (see DIAGRAM.md). Maturity stage assessments are suggestive:
-# they reflect the best-evidenced deployments in a sector, not the median.
+# What's new in 1.1:
+#   - Each sector entry now carries an `idiosyncratic_constraints` block naming
+#     the laws, regulations, frameworks, and institutional requirements that
+#     shape PET decisions in that sector. This responds to the observation that
+#     'healthcare' (for example) is not a single regulatory regime — HIPAA,
+#     GDPR Art. 9, NHS DSPT, and Common Law Duty of Confidentiality each impose
+#     distinct constraints that map onto different PET design choices.
+#   - Each sector also declares its `primary_exposure_problems` (T0 references)
+#     so practitioners can route from a sector to the exposure problems they
+#     are most likely to face.
+#   - These entries are working observations intended to be deepened in
+#     workshops (see workshops/W3-sector-deepening.md).
+#
+# IMPORTANT: Idiosyncratic constraints are listed at the level of the *regime*,
+# not the specific clause. The framework deliberately does not attempt to give
+# legal advice. A real deployment must consult the actual instruments and a
+# qualified DPO or legal counsel.
 #
 # maturity_stage scale (same as primitives.yaml):
 #   1 = Experimental / pilot
@@ -19,8 +32,8 @@
 #   3 = Standardised assurance
 #   4 = Audit-ready / procurement-ready
 
-schema_version: "1.0"
-last_updated: "2026-05"
+schema_version: "1.1"
+last_updated: "2026-05-24"
 
 sectors:
 
@@ -31,6 +44,7 @@ sectors:
       repeated access, strong accountability, and public trust. Outputs must be
       legally defensible and regulatorily compliant. Governance artefacts are
       as important as technical ones.
+    primary_exposure_problems: [EP-06, EP-01, EP-09, EP-08]
     primary_stacks:
       - ref: P-07
         role: primary
@@ -38,6 +52,31 @@ sectors:
         role: primary
       - ref: P-08
         role: secondary
+    idiosyncratic_constraints:
+      legal_instruments:
+        - "Statistics and Registration Service Act 2007 (UK) — duties on national statistical institutes regarding confidentiality and access"
+        - "Census Act 1920 (UK) and Census Act 2010 — statutory confidentiality of census responses"
+        - "Digital Economy Act 2017 (UK) Part 5 — data-sharing powers for research and statistics with accreditation requirements"
+        - "Federal Information Security Modernization Act (US, FISMA) for federal statistical systems"
+        - "Title 13 of the U.S. Code — confidentiality of census responses, with criminal penalties for disclosure"
+      regulatory_expectations:
+        - "ICO Anonymisation Code of Practice (UK)"
+        - "ICO PETs Guidance (2023)"
+        - "NIST SP 800-188 — De-Identifying Government Datasets (US)"
+        - "NIST SP 800-226 (Draft) — DP evaluation guidelines (US)"
+      institutional_frameworks:
+        - "Five Safes framework (ONS / ADR UK) — projects, people, data, settings, outputs"
+        - "ADR UK accreditation regime for researchers and projects"
+        - "ONS Safe Outputs policy and clearance workflow"
+        - "UK Statistics Authority Code of Practice for Statistics"
+      what_this_implies_for_pets: >
+        Mechanisms must produce inspectable artefacts that survive Freedom of
+        Information requests, parliamentary scrutiny, and public release.
+        Procedural-and-statistical layering (TRE + DP) tends to be preferred over
+        pure-cryptographic approaches because the assurance audience includes
+        non-specialists. DP parameter choices are debated publicly (Kenny et al.
+        2021; Muralidhar et al. 2025) — implies the framework should encourage
+        parameter manifests intended for non-specialist review.
     assurance_posture: >
       Output checking, audit logs, reproducible privacy accounting, release
       policy documentation. Human-in-the-loop clearance is a first-class
@@ -50,21 +89,25 @@ sectors:
       reached where TRE + DP is operationalised with maintained change-control logs.
     blocker: >
       Governance latency; legal sufficiency of DP evidence varies by jurisdiction;
-      DP parameter policy requires non-technical policy input; standards recognition
-      for newer stacks (e.g. TEE-based confidential analytics) still emerging.
+      DP parameter policy requires non-technical policy input; standards
+      recognition for newer stacks (e.g. TEE-based confidential analytics) still
+      emerging.
     key_examples:
-      - "ONS Secure Research Service"
+      - "ONS Secure Research Service + Safe Outputs"
       - "ADR UK accredited environments"
-      - "U.S. Census Bureau 2020 DAS"
+      - "U.S. Census Bureau 2020 DAS (DP-C)"
       - "NHS England Secure Data Environment"
+      - "UK GDS PETs international data sharing pilot (2025)"
 
   - id: healthcare
     label: "Healthcare / biomedical research"
     typical_problem: >
       Highly sensitive fragmented data (clinical records, genomics, imaging) held
       across multiple institutions. Strong scientific and clinical validity
-      requirements. Regulatory compliance (GDPR, HIPAA equivalents) and
-      institutional approval processes are non-negotiable constraints.
+      requirements. Regulatory compliance and institutional approval processes
+      are non-negotiable constraints. Patient confidentiality is upheld by both
+      statute and common law in many jurisdictions.
+    primary_exposure_problems: [EP-04, EP-06, EP-11, EP-09, EP-10]
     primary_stacks:
       - ref: P-01
         role: primary
@@ -72,6 +115,48 @@ sectors:
         role: secondary
       - ref: S-01
         role: primary
+      - ref: P-07
+        role: secondary
+    idiosyncratic_constraints:
+      legal_instruments:
+        - "GDPR Article 9 — special-category data: explicit consent or specific
+           lawful basis (e.g. Art. 9(2)(j) for research); applies to UK GDPR too"
+        - "Health Insurance Portability and Accountability Act (US, HIPAA)
+           Privacy Rule and Security Rule"
+        - "Common Law Duty of Confidentiality (UK) — applies to patient
+           information even where GDPR also applies; section 251 NHS Act 2006
+           provides a mechanism for set-aside in research"
+        - "Health Research Authority (UK) and Confidentiality Advisory Group
+           approval pathways"
+        - "21st Century Cures Act (US) and ONC Information Blocking Rule —
+           interoperability requirements that interact with privacy controls"
+        - "EU Health Data Space Regulation (Reg. 2025/327, effective 2026) —
+           proposed framework for secondary use of health data with PET
+           requirements"
+      regulatory_expectations:
+        - "MHRA / FDA expectations for software-as-medical-device validity"
+        - "NICE clinical evidence frameworks (UK)"
+        - "ICO guidance on health data (UK)"
+        - "NHS Digital Data Security and Protection Toolkit (DSPT)"
+        - "WHO ethics guidance for AI in health"
+      institutional_frameworks:
+        - "NHS Secure Data Environment network (England) — single-entry approach
+           since 2024 following the Goldacre Review"
+        - "Health Data Research Service (HDRS, UK) — standardised access agreements"
+        - "Research Ethics Committees (RECs, UK) and Institutional Review Boards
+           (IRBs, US)"
+        - "Clinical governance: indemnity, sponsor responsibility, data controller
+           determination"
+      what_this_implies_for_pets: >
+        Pre-existing clinical governance (REC/IRB approval, sponsor agreements,
+        section 251 approvals) often gates PET deployment regardless of technical
+        merit. Architectural-first patterns (TRE, FL with local de-identification
+        at source) dominate because they integrate with existing institutional
+        controls; pure algorithmic responses (HE on raw clinical data crossing
+        institutions) face higher non-technical barriers even when technically
+        feasible. The framework should make this explicit: a 'private' technical
+        solution that does not also accommodate REC review, sponsor sign-off, and
+        DSPT is not deployable in practice.
     assurance_posture: >
       Clinical validity, robustness monitoring, institutional approval,
       implementation transparency. Technical privacy artefacts must be
@@ -86,32 +171,70 @@ sectors:
     blocker: >
       Domain-specific validity requirements; multi-stakeholder approval chains;
       fairness and demographic bias under DP is under-researched; data
-      heterogeneity (non-IID) degrades FL utility.
+      heterogeneity (non-IID) degrades FL utility; Common Law Duty of
+      Confidentiality (UK) and HIPAA (US) impose constraints that technical PETs
+      do not relieve.
     key_examples:
-      - "NVIDIA FLARE / NHS FLIP (King's College London)"
+      - "NVIDIA FLARE / NHS FLIP (King's College London, 2025)"
       - "OpenSAFELY (Bennett Institute / NHS England)"
       - "US-UK PETs Prize Challenge (2022–2023)"
+      - "Soltan et al. (2024) — Raspberry Pi NHS COVID-19 federated screening"
       - "Froelicher et al. (2021) — federated HE for genomics"
 
   - id: finance
     label: "Finance / fraud detection / inter-organisational analytics"
     typical_problem: >
-      Strong commercial incentive for joint analysis across organisational boundaries
-      (banks, insurers, payment networks) without pooling raw data. Latency and
-      throughput matter. Regulatory compliance and audit requirements are sector-specific
-      and vary by jurisdiction.
+      Strong commercial incentive for joint analysis across organisational
+      boundaries (banks, insurers, payment networks) without pooling raw data.
+      Latency and throughput matter. Regulatory compliance and audit
+      requirements are sector-specific and vary by jurisdiction. Production use
+      tends to demand deterministic reproducibility for model and risk decisions.
+    primary_exposure_problems: [EP-02, EP-03, EP-07, EP-11]
     primary_stacks:
       - ref: P-05
         role: primary
       - ref: P-04
         role: secondary
       - ref: P-06
-        role: secondary
+        role: experimental
+    idiosyncratic_constraints:
+      legal_instruments:
+        - "Gramm-Leach-Bliley Act (US, GLBA) — financial privacy obligations"
+        - "Bank Secrecy Act / Anti-Money-Laundering Acts (US, BSA/AML, UK MLR
+           2017) — counter-balancing obligations that constrain privacy
+           approaches in fraud / AML contexts"
+        - "EU MiFID II and PSD2 — investment-services and payment-services
+           obligations affecting joint analytics"
+        - "EU Markets in Crypto-Assets Regulation (MiCA, in force 2024)"
+        - "GDPR and UK GDPR — apply to personal data in financial services"
+      regulatory_expectations:
+        - "FCA model risk management expectations (SS1/23 UK PRA; equivalents
+           elsewhere) — demand model documentation, validation, monitoring"
+        - "PCI-DSS — payment-card security baselines applicable to any
+           card-data processing"
+        - "Basel Committee on Banking Supervision guidance on AI / model risk"
+        - "Bank for International Settlements (FSI Occasional Paper 24, 2025) on
+           AI explainability — implies that any privacy mechanism affecting
+           outputs must remain explainable and auditable"
+      institutional_frameworks:
+        - "Three lines of defence — first-line business, second-line risk and
+           compliance, third-line internal audit; PET deployments must satisfy
+           all three"
+        - "Independent model validation (typically pre-production gating)"
+        - "Operational resilience requirements (DORA in EU, FCA in UK)"
+      what_this_implies_for_pets: >
+        Mechanisms that introduce stochastic distortion (e.g. DP applied to
+        risk-scoring outputs) can be hard to reconcile with model-explainability
+        and reproducibility expectations. Deterministic-output mechanisms (MPC
+        on encrypted inputs, HE-based encrypted-identifier checks returning
+        true/false) often fit better with sectoral assurance. The framework
+        should make this visible — PETs are not all equally interpretable in
+        sectors with strong model-governance regimes.
     assurance_posture: >
       Threat-model clarity, implementation audit, benchmarked performance,
       correctness verification. Performance evidence and cryptographic audit
       substitute for public-sector-style procedural governance.
-    dominant_anchor: "Technical performance evidence and implementation audit"
+    dominant_anchor: "Technical performance evidence and implementation audit, framed for model-risk governance"
     maturity_stage: 2
     maturity_notes: >
       Stage 2–3. Strongest uptake where high-value cross-party use cases justify
@@ -121,20 +244,24 @@ sectors:
     blocker: >
       Compute and communication overhead for MPC and HE at scale; commercial
       incentive required to offset engineering cost; regulatory acceptance of
-      cryptographic assurance artefacts varies across jurisdictions.
+      cryptographic assurance artefacts varies across jurisdictions; AI-risk and
+      model-explainability expectations interact with stochastic privacy
+      mechanisms.
     key_examples:
-      - "Bogetoft et al. (2009) — MPC for Danish agriculture"
-      - "WEF / BCG cross-bank SGX pilot (2019/2021)"
+      - "Bogetoft et al. (2009) — MPC for Danish agriculture (foundational)"
+      - "WEF / BCG cross-bank SGX pilot (2019)"
       - "Mastercard confidential analytics (2024)"
-      - "IBM HE4Cloud in financial services (2025)"
+      - "IBM HE4Cloud in financial services (Intesa Sanpaolo, 2020+; HE4Cloud 2025)"
+      - "Future of Privacy Forum (2025) — cross-jurisdictional FHE fraud screening"
 
   - id: technology
     label: "Technology platforms / consumer AI / large-scale telemetry"
     typical_problem: >
       Massive scale (billions of users), continuous telemetry and model update
-      streams, infrastructure integration constraints. Privacy must be built into
-      production pipelines rather than applied as a bespoke overlay. Parameter
-      governance and accountability at scale are dominant concerns.
+      streams, infrastructure integration constraints. Privacy must be built
+      into production pipelines rather than applied as a bespoke overlay.
+      Parameter governance and accountability at scale are dominant concerns.
+    primary_exposure_problems: [EP-08, EP-04, EP-01, EP-03]
     primary_stacks:
       - ref: P-01
         role: primary
@@ -142,6 +269,37 @@ sectors:
         role: primary
       - ref: P-04
         role: secondary
+    idiosyncratic_constraints:
+      legal_instruments:
+        - "GDPR / UK GDPR — applies to platforms serving European users"
+        - "California Consumer Privacy Act (CCPA) and California Privacy Rights
+           Act (CPRA)"
+        - "Other US state laws (Virginia VCDPA, Colorado CPA, etc. — fragmented)"
+        - "ePrivacy Directive (EU) — telemetry, cookies, communications metadata"
+        - "EU Digital Markets Act (DMA, 2024–) — data-sharing obligations for
+           gatekeeper platforms"
+        - "EU Digital Services Act (DSA, 2023–) — transparency and risk-assessment
+           obligations interacting with telemetry processing"
+        - "EU AI Act (2024–) — risk-based AI obligations, affects telemetry use
+           for ML systems"
+      regulatory_expectations:
+        - "ICO PETs Guidance (UK)"
+        - "FTC enforcement actions on telemetry / consent (US)"
+        - "Regulator scrutiny of Privacy Sandbox-style measurement APIs (UK CMA,
+           ICO)"
+      institutional_frameworks:
+        - "Privacy review programmes within platforms (Google, Apple, Meta)"
+        - "External audit and conformance regimes (ISO/IEC 27701 for privacy
+           information management)"
+        - "Industry consortia for measurement (Privacy Sandbox, Interoperable
+           Private Attribution)"
+      what_this_implies_for_pets: >
+        Platforms can enforce uniform client behaviour and interface constraints
+        that cross-institutional settings cannot. This makes large-scale DP and
+        FL more viable but creates a portability problem: techniques that work
+        for a single platform owner do not necessarily transfer to multi-party
+        settings (Troncoso et al. 2017). The framework should be explicit that
+        platform-scale maturity is not generalisable maturity.
     assurance_posture: >
       Parameter governance, continuous privacy accounting, interface discipline,
       systems integration. Accountability of composition across many releases
@@ -150,28 +308,57 @@ sectors:
     maturity_stage: 3
     maturity_notes: >
       Stage 3 where PETs are built directly into platform infrastructure (Google
-      Privacy Sandbox, Apple DP telemetry, Google Gboard FL). Parameter drift and
-      regulatory clarity on epsilon values at population scale remain open concerns.
+      Privacy Sandbox, Apple DP-L telemetry, Google Gboard FL + DP). Parameter
+      drift and regulatory clarity on epsilon values at population scale remain
+      open concerns. Recent independent analyses of Privacy Sandbox measurement
+      DP (Ghazi et al. 2025) and Apple LDP parameters (Tang et al. 2017) flag
+      ongoing transparency questions.
     blocker: >
-      Accountability of composition over millions of releases; regulatory clarity
-      on what constitutes adequate DP parameterisation at platform scale; interface
-      discipline to prevent accidental non-private fallbacks.
+      Accountability of composition over millions of releases; regulatory
+      clarity on what constitutes adequate DP parameterisation at platform
+      scale; interface discipline to prevent accidental non-private fallbacks;
+      DMA / DSA data-sharing obligations introducing new exposure surfaces
+      that pre-date corresponding PET guidance.
     key_examples:
-      - "Google RAPPOR and Privacy Sandbox"
-      - "Apple DP telemetry"
-      - "Google Gboard FL with secure aggregation"
-      - "Meta / Mozilla IPA (Interoperable Private Attribution)"
+      - "Google RAPPOR (Erlingsson et al. 2014) and Privacy Sandbox (2024)"
+      - "Apple DP telemetry (Tang et al. 2017)"
+      - "Google Gboard FL with DP (Xu et al. 2023)"
+      - "Meta / Mozilla Interoperable Private Attribution (2023)"
 
   - id: web3
     label: "Web3 / verifiable infrastructure / credential ecosystems"
     typical_problem: >
-      Need to prove correctness, eligibility, or compliance with minimal disclosure
-      in permissionless or low-trust environments. Cryptographic verification serves
-      as the primary governance mechanism; procedural human-in-the-loop review is
-      absent or minimal by design.
+      Need to prove correctness, eligibility, or compliance with minimal
+      disclosure in permissionless or low-trust environments. Cryptographic
+      verification serves as the primary governance mechanism; procedural
+      human-in-the-loop review is absent or minimal by design.
+    primary_exposure_problems: [EP-07, EP-02]
     primary_stacks:
       - ref: P-06
-        role: primary
+        role: experimental
+    idiosyncratic_constraints:
+      legal_instruments:
+        - "EU eIDAS 2.0 (Regulation 2024/1183) — establishes European Digital
+           Identity Wallet framework; ZKP integration remains an open
+           implementation question"
+        - "EU Markets in Crypto-Assets Regulation (MiCA, in force 2024)"
+        - "US state-level approaches (varying)"
+      regulatory_expectations:
+        - "W3C Verifiable Credentials 2.0 (W3C Recommendation, 2025)"
+        - "ISO/IEC working items on decentralised identifiers and ZKP"
+        - "Variable national positions on cryptographic credentials"
+      institutional_frameworks:
+        - "Open-source consortia and standards bodies (W3C, IETF, DIF)"
+        - "Layer-1 protocol governance"
+        - "Limited or absent procedural accountability layer compared with
+           public sector"
+      what_this_implies_for_pets: >
+        Cryptographic proof substitutes for procedural governance, but the
+        substitution is contestable in regulatory contexts (Babel & Sedlmeir
+        2023; Ramos Fernández 2024). The framework should flag that ZKP-as-
+        primary-assurance may not transfer to sectors expecting procedural
+        accountability. This is a key portability question for cross-sector
+        ZKP claims.
     assurance_posture: >
       Proof-system soundness, circuit correctness, benchmark reproducibility,
       trusted-setup transparency. Cryptographic verification is the assurance
@@ -181,15 +368,16 @@ sectors:
     maturity_notes: >
       Stage 2–3 where cryptographic verification itself is the assurance anchor
       (blockchain rollups, verifiable transactions). Stage 1–2 outside these
-      contexts. zkBench and related tooling are improving reproducibility.
+      contexts. zk-Bench and related tooling are improving reproducibility.
       ZKML and ZKP credential ecosystems (eIDAS 2.0, W3C VC 2.0) remain stage 1–2.
     blocker: >
-      Proof generation cost; circuit under-constraint risk; irreproducible benchmarks
-      limiting comparability; limited standardisation outside blockchain; governance
+      Proof generation cost; circuit under-constraint risk (Heidari Soureshjani
+      et al. 2023; Chaliasos et al. 2024); irreproducible benchmarks limiting
+      comparability; limited standardisation outside blockchain; governance
       misalignment when ZKP is proposed for public-sector contexts expecting
       procedural accountability.
     key_examples:
       - "zk-SNARK rollups (Ethereum, StarkWare)"
       - "Babel & Sedlmeir (2023) — ZKP anonymous credentials"
-      - "W3C Verifiable Credentials 2.0"
+      - "W3C Verifiable Credentials 2.0 (2025)"
       - "eIDAS 2.0 European Digital Identity framework"

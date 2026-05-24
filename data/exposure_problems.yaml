@@ -1,0 +1,295 @@
+# T0 — Common Exposure Problems
+#
+# Schema version: 1.0
+# Companion to T1-T4. Where T1-T4 read "primitive → combination → stack → sector",
+# T0 reads "exposure problem → which PETs respond → at what cost".
+#
+# This index exists because PET combinations multiply faster than they can be
+# usefully characterised. Rather than enumerating exotic combinations exhaustively,
+# T0 names the *exposure problems* practitioners actually face. A combination is
+# legitimate when it solves a specific exposure problem with an inspectable
+# assurance story; combinations that do not map to a named problem are usually
+# either redundant or not yet useful.
+#
+# Cross-references:
+#   responding_pets[]   -> primitives.yaml (PRIMITIVE.id) or pairings.yaml (PAIRING.id)
+#                       or stacks.yaml (STACK.id)
+#   disclosure_types[]  -> GLOSSARY.md §2 (identity, attribute, membership, linkage,
+#                                          reconstruction, composition_leakage)
+#
+# IMPORTANT: This is a working index intended to be revised in workshops. Entries
+# are deliberately written at the architectural level, not the use-case level —
+# "we want to train a model jointly" is captured by EP-04, not by a separate entry
+# per model type.
+
+schema_version: "1.0"
+last_updated: "2026-05-24"
+
+exposure_problems:
+
+  - id: EP-01
+    name: "Aggregated outputs may reveal individual records"
+    description: >
+      An organisation publishes statistics, model parameters, or query answers
+      computed over a sensitive dataset. The release itself can leak per-record
+      information through differencing, reconstruction, or membership inference.
+      The compute environment is not the issue — the release surface is.
+    disclosure_types: [identity, attribute, membership, reconstruction, composition_leakage]
+    responding_pets:
+      - ref: DP-C
+        note: "Primary response. Adds calibrated noise to the release; bounds privacy loss formally."
+      - ref: P-07
+        note: "DP-C inside a TRE; combines formal output bound with human output checking."
+      - ref: P-08
+        note: "When the release is a dataset-shaped artefact, generator + DP."
+    assurance_anchors:
+      - privacy accountant
+      - parameter manifest (epsilon, delta, sensitivity)
+      - output-clearance log
+    canonical_failure_mode: >
+      Releasing many marginal statistics without composition accounting — privacy
+      loss compounds; the per-query bound becomes meaningless across a programme.
+    survey_paper_refs: ["§2.1.3", "§2.1.4", "§3.4"]
+
+  - id: EP-02
+    name: "Data cannot leave its source for joint computation"
+    description: >
+      Two or more parties want to compute over their combined data, but no party
+      is permitted (legally, contractually, or commercially) to send raw records
+      to another. The exposure problem is the boundary crossing itself.
+    disclosure_types: [identity, attribute, membership]
+    responding_pets:
+      - ref: MPC
+        note: "Cryptographic joint computation without revealing inputs."
+      - ref: HE
+        note: "Computation over ciphertexts; party doing the work sees only encrypted state."
+      - ref: FL
+        note: "Architectural response: keep data local, exchange model updates only."
+      - ref: P-02
+        note: "FL + secure aggregation when individual updates also leak."
+    assurance_anchors:
+      - adversary-model declaration (which corruption threshold, which adversary class)
+      - protocol specification and correctness proof
+      - communication benchmark (round complexity, bandwidth)
+    canonical_failure_mode: >
+      Assuming the MPC adversary model — typically semi-honest — without declaring
+      it. A malicious adversary can deviate from the protocol; "secure under MPC"
+      without the model named is an unsubstantiated claim.
+    survey_paper_refs: ["§2.1.1", "§2.1.2", "§2.2.1"]
+
+  - id: EP-03
+    name: "Computation must happen inside an untrusted environment"
+    description: >
+      Sensitive data is processed on infrastructure (cloud, third-party operator,
+      shared host) where the operator should not be trusted with raw data, but
+      end-to-end encryption is infeasible because the workload needs plaintext
+      to execute. The exposure problem is in-use confidentiality.
+    disclosure_types: [identity, attribute]
+    responding_pets:
+      - ref: TEE
+        note: "Hardware-anchored isolation of in-use data and code."
+      - ref: HE
+        note: "Cryptographic alternative when TEE is unavailable or untrusted at the hardware level."
+      - ref: P-04
+        note: "TEE + DP-C when the *output* also needs protection, not just the in-use state."
+    assurance_anchors:
+      - attestation
+      - enclave measurement
+      - side-channel mitigation declaration
+      - dependency manifest
+    canonical_failure_mode: >
+      Treating TEE attestation as a privacy guarantee for outputs. Attestation proves
+      what is running, not that what runs is correct or that the outputs are bounded.
+      An enclave that emits raw aggregates still leaks at the release boundary.
+    survey_paper_refs: ["§2.2.2", "§3.4"]
+
+  - id: EP-04
+    name: "Distributed model training where updates may leak training data"
+    description: >
+      A model is trained by aggregating updates from multiple clients. The
+      coordinator sees the updates and could, in principle, reconstruct training
+      records (gradient inversion) or infer participation (membership inference).
+    disclosure_types: [identity, attribute, membership]
+    responding_pets:
+      - ref: P-01
+        note: "FL + DP-C on updates or aggregate. Bounds the leakage from updates."
+      - ref: P-02
+        note: "FL + MPC for secure aggregation. Coordinator sees only the sum."
+      - ref: P-03
+        note: "FL + TEE. Hardware isolation of the aggregation step."
+      - ref: S-01
+        note: "FL + TEE + DP-C. Defence-in-depth: local data, isolated aggregation, bounded output."
+      - ref: S-03
+        note: "FL + MPC + DP-C. Coordinator-blind aggregation plus formal output bound."
+    assurance_anchors:
+      - secure-aggregation protocol specification
+      - privacy accountant across training rounds
+      - attestation (if TEE used)
+      - robustness / Byzantine-tolerance report
+    canonical_failure_mode: >
+      Treating "raw data stays local" as the privacy claim. The updates leak.
+      FL alone provides architectural minimisation, not formal privacy.
+    survey_paper_refs: ["§2.2.1", "§3.4"]
+
+  - id: EP-05
+    name: "Need to share or republish a dataset-shaped artefact"
+    description: >
+      Downstream uses require data that *looks like* the source — supporting tool
+      development, training pipelines, model evaluation — but raw release is
+      prohibited. The exposure problem is the release of a data-shaped artefact
+      that could be re-identified or that could leak training records.
+    disclosure_types: [identity, attribute, membership, linkage]
+    responding_pets:
+      - ref: SYN
+        note: "Generate data-shaped artefacts. Privacy depends on the generator and the audit."
+      - ref: P-08
+        note: "SYN + DP-C. Formal privacy bound on generator training or release."
+      - ref: S-04
+        note: "TEE + SYN + DP-C. Attested DP-trained generation in a hardware-isolated environment."
+    assurance_anchors:
+      - disclosure-risk evaluation (MIA, linkage, outlier audit)
+      - utility benchmark relative to real-data baseline
+      - generator parameter manifest
+    canonical_failure_mode: >
+      Releasing high-fidelity synthetic data on the assumption that it is private
+      by construction. Synthetic data without DP coupling or adversarial audit is
+      a release of unmodelled disclosure risk (Stadler et al. 2022).
+    survey_paper_refs: ["§2.1.5", "§3.1"]
+
+  - id: EP-06
+    name: "Repeated, governed access to sensitive data for research"
+    description: >
+      A custodian needs to allow many researchers to access a sensitive dataset
+      over time, with different projects, different scopes, and different output
+      expectations. The exposure problem is *programmatic* — no single release,
+      but a flow of access and outputs needing accountability.
+    disclosure_types: [identity, attribute, membership, linkage, composition_leakage]
+    responding_pets:
+      - ref: TRE
+        note: "Primary response. Institutional layer for safe people / project / data / setting / outputs."
+      - ref: P-07
+        note: "TRE + DP-C when statistical releases need a formal bound on top of human checking."
+      - ref: S-02
+        note: "TRE + TEE + DP-C for the highest-sensitivity governed analytics."
+    assurance_anchors:
+      - access audit logs
+      - output-clearance log
+      - accreditation records (researcher / project)
+      - safe-outputs policy
+    canonical_failure_mode: >
+      Treating a TRE as a technology rather than a socio-technical regime. Output
+      checking, project approval, and accreditation are the defining assurance
+      mechanisms, not the compute platform.
+    survey_paper_refs: ["§2.2.2", "§4.1.2"]
+
+  - id: EP-07
+    name: "Prove a property without revealing the underlying data"
+    description: >
+      A party needs to demonstrate a fact about its data (age, eligibility,
+      computational correctness, audit conformance) without disclosing the data
+      itself. The exposure problem is over-disclosure when only a proof is required.
+    disclosure_types: [identity, attribute]
+    responding_pets:
+      - ref: ZKP
+        note: "Cryptographic proof of a statement without revealing the witness."
+      - ref: P-06
+        note: "TEE + ZKP when the prover environment also requires hardware-anchored protection."
+    assurance_anchors:
+      - circuit definition
+      - verification parameters
+      - setup transcript (if trusted setup)
+      - benchmark report (proof size, prover/verifier time)
+    canonical_failure_mode: >
+      Trusting the ZKP system without auditing the circuit. Proofs verify even when
+      the encoded statement is wrong if circuits are under-constrained
+      (Heidari Soureshjani et al. 2023; Chaliasos et al. 2024).
+    survey_paper_refs: ["§2.1.6", "§3.4"]
+
+  - id: EP-08
+    name: "Cumulative privacy loss across multiple releases"
+    description: >
+      A system makes many releases over time: queries, model versions, periodic
+      statistics. Each release may be acceptable in isolation, but cumulative
+      privacy loss compounds. The exposure problem is *composition*, not any
+      single release.
+    disclosure_types: [composition_leakage, membership, reconstruction]
+    responding_pets:
+      - ref: DP-C
+        note: "Privacy accountant tracks cumulative loss under a stated composition theorem."
+      - ref: DP-L
+        note: "Per-user, per-window epsilon budgeting for telemetry pipelines."
+    assurance_anchors:
+      - privacy accountant with composition theorem named
+      - release log linked to budget consumption
+      - parameter manifest version-locked to accountant version
+    canonical_failure_mode: >
+      Applying epsilon = 1 per release across hundreds of releases without an
+      accountant. The system's effective privacy loss is the sum (or worse under
+      naive composition), not the per-release value (COMP-001 in YAPS rules).
+    survey_paper_refs: ["§3.4", "§3.5"]
+
+  - id: EP-09
+    name: "Re-identification from quasi-identifiers in low-dimensional release"
+    description: >
+      A release contains attribute combinations that uniquely identify individuals
+      in a population even without direct identifiers (Sweeney 2002; Rocher et
+      al. 2019). The exposure problem is residual identifiability under realistic
+      auxiliary data.
+    disclosure_types: [identity, linkage]
+    responding_pets:
+      - ref: DP-C
+        note: "Formal bound on individual-level influence on the release."
+      - ref: SYN
+        note: "Smoothing / generative modelling reduces direct identifiability — quality of protection depends on audit."
+      - ref: TRE
+        note: "Output checking catches small-cell singling-out via human review."
+    assurance_anchors:
+      - disclosure-risk evaluation (singling-out test, motivated-intruder simulation)
+      - cell suppression and minimum risk-set policies
+    canonical_failure_mode: >
+      Equating identifier removal with anonymisation. Pseudonymisation remains
+      personal data; quasi-identifiers carry residual risk (ICO n.d.).
+    survey_paper_refs: ["§2.1.4", "§4.1.1"]
+
+  - id: EP-10
+    name: "Lifecycle controls — withdrawal, retraining, deprecated artefacts"
+    description: >
+      Data subjects withdraw consent; models trained on their data persist. The
+      exposure problem is the inability to *remove influence* of specific records
+      from deployed artefacts after the fact.
+    disclosure_types: [membership, attribute]
+    responding_pets:
+      - ref: SYN
+        note: "Regenerate from a privacy-bounded process rather than retrain on raw data."
+      - note: "Machine unlearning (Liu et al. 2024) — assurance artefact rather than a PET primitive in T1, but a relevant lifecycle control."
+    assurance_anchors:
+      - change log linked to model versions
+      - re-training / unlearning evidence
+      - audit log of withdrawal requests honoured
+    canonical_failure_mode: >
+      Treating consent withdrawal as a data-deletion operation only. Deployed
+      models retain information about training records (Carlini et al. 2019).
+    survey_paper_refs: ["§5"]
+
+  - id: EP-11
+    name: "Cross-jurisdictional analytics with conflicting legal regimes"
+    description: >
+      Data subjects sit in multiple jurisdictions whose data-protection regimes
+      differ (GDPR, UK GDPR, HIPAA, CCPA). The exposure problem is jurisdictional
+      mismatch — a release lawful in one country may be unlawful in another.
+    disclosure_types: [identity, attribute, linkage]
+    responding_pets:
+      - ref: FL
+        note: "Data stays in jurisdiction; only model updates cross."
+      - ref: P-04
+        note: "TEE + DP-C in the recipient jurisdiction with formal output bound."
+      - ref: S-01
+        note: "Defence-in-depth for the highest-sensitivity cross-jurisdictional analyses."
+    assurance_anchors:
+      - jurisdictional applicability declaration
+      - DPIA reference per jurisdiction
+      - cross-border transfer documentation (e.g. SCCs under UK GDPR)
+    canonical_failure_mode: >
+      Applying one jurisdiction's controls to data subjects of another. UK-US
+      federated survival analysis (GDS 2025) is the documented worked example.
+    survey_paper_refs: ["§4.1", "§5"]
