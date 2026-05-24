@@ -16,6 +16,8 @@ Privacy risk is different in two important ways.
 
 YAPS is designed for this second type of question. It does not try to quantify likelihood × impact. Instead, it asks: **given the architecture recorded in this card, which assurance claims are unsubstantiated, which governance controls are absent, and which regulatory expectations are unmet?** This is an **assurance-gap model** rather than a threat-probability model.
 
+> **Construction methodology.** YAPS evaluates cards constructed using the [stepwise-from-private methodology](../STEPWISE_RISK.md): each PET-enabled access pattern is recorded as a deviation from a completely-private baseline. The rule categories below map onto the elements of each stepwise deviation — IFACE rules check trust assumptions added, COMP rules check the interactions between deviations, ASSUR rules check that named assurance anchors exist, GOV/SECTOR/REG rules check the broader procedural and regulatory layer.
+
 ---
 
 ## The assurance-gap model
@@ -151,3 +153,15 @@ The overall rating is the worst single finding across all evaluated rules. One R
 - **Replace domain expertise.** Clinical validity, financial regulatory compliance, and sector-specific deployment knowledge are outside scope. The SECTOR rules prompt for these; they do not evaluate them.
 - **Model auxiliary data risk dynamically.** The current rule set cannot evaluate linkage risk from external datasets — this requires per-dataset analysis. The data profile schema has a reserved `auxiliary_data_risk` field for future tooling.
 - **Evaluate tool implementations.** Rules check for documented artefacts, not whether a specific tool is implemented correctly. Implementation correctness requires code audit, not card review.
+
+---
+
+## Related artefacts in the repository
+
+The risk model interacts with several other parts of the framework. Readers may find these directly useful:
+
+- [GLOSSARY.md](../GLOSSARY.md) — the formalised trust-assumption, disclosure-risk, and assurance-artefact terms used by every rule.
+- [EXPOSURE_PROBLEMS.md](../EXPOSURE_PROBLEMS.md) — the T0 problem-first index. Cards may declare which `EP-` entries each step is responding to; rules can in turn check whether the named response is evidenced.
+- [STEPWISE_RISK.md](../STEPWISE_RISK.md) — the card construction methodology. Rule findings map onto specific positions in the stepwise chain.
+- [data/sectors.yaml](../data/sectors.yaml) — sector entries now carry an `idiosyncratic_constraints` block (laws, regulatory expectations, institutional frameworks). SECTOR rules consult these when evaluating sector-specific gaps.
+- [workshops/](../workshops/) — the framework's open questions (including those about this risk model) are tracked in [workshops/OPEN_QUESTIONS.md](../workshops/OPEN_QUESTIONS.md).

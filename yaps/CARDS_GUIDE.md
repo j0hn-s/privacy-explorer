@@ -2,6 +2,10 @@
 
 A Privacy Card is not a static document. It is designed to be updated as the technology, academic evidence base, or governance landscape around a deployment changes. This guide explains the modular structure of a card, how to swap components, and how to track changes over time.
 
+> **Construction methodology.** Cards in this repository are constructed using the [stepwise-from-private approach](../STEPWISE_RISK.md). Start from a completely-private baseline; each PET-enabled access pattern is recorded as a deviation with a named purpose, exposure problem ([T0 reference](../EXPOSURE_PROBLEMS.md)), PET response, trust assumption, assurance anchor, and residual risk. The card is the ordered chain of those deviations. The five layers below describe the *content* of a card; the stepwise approach describes how to *build* it.
+
+> **Vocabulary.** Trust-assumption, disclosure-risk, and assurance-artefact terms used throughout this guide are defined in [../GLOSSARY.md](../GLOSSARY.md). Card authors should use those terms consistently rather than inventing equivalents.
+
 ---
 
 ## The five layers
@@ -244,6 +248,49 @@ Running the risk engine after any module change is the fastest way to see the ne
 
 The modular structure is designed to support a specific use of Privacy Cards: as **living governance documents** that accompany a deployment from pilot through to production and beyond. In this use, a card is not a one-time artefact — it is maintained alongside the deployment and updated whenever a significant architectural or governance change occurs.
 
-This mirrors the approach taken with Data Protection Impact Assessments under GDPR Art. 35, which are explicitly expected to be reviewed and updated when processing activities change. A Privacy Card can serve as the technical annex to a DPIA: the DPIA records the legal basis and organisational accountability; the card records the technical architecture, artefact evidence, and risk findings.
+This mirrors the approach taken with Data Protection Impact Assessments under GDPR Art. 35, which are explicitly expected to be reviewed and updated when processing activities change. A Privacy Card can serve as the **technical annex** to a DPIA: the DPIA records the legal basis and organisational accountability; the card records the technical architecture, artefact evidence, and risk findings.
 
 As the field matures — as new tools, new attack results, and new regulatory guidance emerge — the modular structure means that specific components can be updated without requiring the whole card to be re-authored. The `change_log` provides the audit trail that demonstrates the card has been maintained, not just created.
+
+---
+
+## Worked example — stepwise construction of a healthcare FL card
+
+The following illustrates how a card is built using the [stepwise-from-private methodology](../STEPWISE_RISK.md). Each step adds one entry to the card's stepwise chain; the cumulative chain *is* the rationale for the architecture.
+
+**Deployment.** Cross-hospital federated training of a clinical model. Patient records sit in each NHS trust's local store and cannot move.
+
+**Step 0 — baseline.** Data sits locally. No analysis. No exposure. No utility.
+
+**Step 1 — enable distributed computation.**
+- Purpose: each trust computes gradients on its own data.
+- Exposure problem introduced: **EP-04** (updates may leak training data).
+- PET response: `FL` (T1).
+- Trust assumption: coordinator is honest-but-curious.
+- Assurance anchor: training protocol specification, round-participation log.
+- Residual after step 1: updates leak.
+
+**Step 2 — bound the per-update leakage.**
+- Purpose: address EP-04 leakage; introduce **EP-08** (composition across rounds).
+- PET response: `DP-C` (T1, central DP) on the aggregate — combination becomes **P-01** (FL + DP-C).
+- Trust assumption: parameter governance, composition theorem.
+- Assurance anchor: privacy accountant, parameter manifest, named composition theorem.
+- Residual after step 2: coordinator still sees individual DP-noised updates before aggregation.
+
+**Step 3 — make the coordinator blind to individual updates.**
+- Purpose: close coordinator-visibility gap.
+- PET response: `MPC` for secure aggregation — combination becomes **S-03** (FL + MPC + DP-C).
+- Trust assumption: k-of-n corruption bound.
+- Assurance anchor: secure-aggregation protocol specification, correctness proof, adversary-model declaration.
+- Residual after step 3: infrastructure operator could see encrypted intermediate state.
+
+**Step 4 — protect the aggregation environment.**
+- Purpose: address EP-03 (untrusted compute environment).
+- PET response: `TEE` for the aggregation server.
+- Trust assumption: hardware vendor + attestation chain.
+- Assurance anchor: attestation report, enclave measurement, side-channel mitigations.
+- Residual after step 4: hardware vendor compromise; side-channels not covered by declared mitigations.
+
+The card now documents an FL + secure-aggregation + DP-C + TEE deployment with four explicit deviations from baseline. A reviewer can inspect each step's assurance anchor; the YAPS rule engine evaluates whether each anchor exists.
+
+This worked example aligns with the survey paper's discussion of the UK-US federated survival analysis pilot (GDS 2025) and with the NHS FLIP architecture (Soltan et al. 2024).

@@ -2,7 +2,9 @@
 
 YAPS is the interactive component of the Privacy Explorer repository. It lets practitioners compose privacy architecture decisions in a structured way, apply rule-based risk profiles to those decisions, and produce governance-ready reports — without requiring any AI or ML tooling.
 
-> **Scope:** YAPS is a conceptual risk assessment tool. It is not a formal verification system, a compliance checklist, or a substitute for legal advice. Risk findings are indicative and are best read alongside the T1–T4 tables in the root README.
+> **Scope:** YAPS is a conceptual risk assessment tool. It is not a formal verification system, a compliance checklist, or a substitute for legal advice. Risk findings are indicative and are best read alongside the [T0 exposure-problem index](../EXPOSURE_PROBLEMS.md) and the T1–T4 tables in the root [README](../README.md).
+
+> **Methodology:** Cards are constructed using the [stepwise-from-private approach](../STEPWISE_RISK.md). The vocabulary used throughout is defined in [../GLOSSARY.md](../GLOSSARY.md).
 
 ---
 
@@ -52,16 +54,17 @@ yaps/
 
 ## Connection to the Explorer Tables
 
-Every Privacy Card carries explicit foreign-key references back to the T1–T4 tables:
+Every Privacy Card carries explicit foreign-key references back to the T0–T4 materials:
 
-| Card field | Explorer table | Example value |
-|------------|---------------|---------------|
-| `pet_components[].primitive_id` | T1 `ID` column | `"FL"`, `"TEE"`, `"DP"` |
+| Card field | Reference | Example value |
+|---|---|---|
+| `step[].exposure_problem_ref` | T0 `EP.id` | `"EP-04"`, `"EP-03"` |
+| `pet_components[].primitive_id` | T1 `ID` column | `"FL"`, `"TEE"`, `"DP-C"`, `"DP-L"` |
 | `architecture_pattern.pairing_ref` | T2 `Pair ID` | `"P-03"` |
 | `architecture_pattern.stack_ref` | T3 `Stack ID` | `"S-01"` |
 | `deployment_context.sector_ref` | T4 sector `id` | `"healthcare"` |
 
-This means a card is always anchored to a specific row in the maturity / assurance / combination tables, making the risk report reproducible and forkable alongside the underlying data.
+A card is anchored to specific rows in the reference materials, making the risk report reproducible and forkable alongside the underlying data. The T0 reference is added by the stepwise construction methodology — each step names the exposure problem it is responding to.
 
 ---
 
