@@ -26,8 +26,8 @@
 
     "schema_version": {
       "type": "string",
-      "const": "1.0",
-      "description": "Schema version this card was written against."
+      "enum": ["1.0", "1.1", "1.2"],
+      "description": "Schema version this card was written against. 1.2 adds the optional `risk_calibration` block for operational DP reporting (μ-DP, attack-rate target, regret, trade-off curve). 1.1 added stepwise_chain, exposure_problem_refs, jurisdictional_context, and DP-L/DP-C primitive ids. 1.0 cards remain valid."
     },
 
     "title": {
@@ -102,8 +102,8 @@
         "properties": {
           "primitive_id": {
             "type": "string",
-            "description": "T1 primitive ID.",
-            "enum": ["DP", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE"]
+            "description": "T1 primitive ID. DP is retained as a family pointer; new cards should prefer DP-L (local) or DP-C (central) for explicit trust-model declaration.",
+            "enum": ["DP", "DP-L", "DP-C", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE"]
           },
           "role": {
             "type": "string",
@@ -439,6 +439,179 @@
           "date": { "type": "string", "format": "date" },
           "change": { "type": "string" },
           "author": { "type": "string" }
+        }
+      }
+    },
+
+    "exposure_problem_refs": {
+      "type": "array",
+      "description": "T0 exposure problem identifiers this card is responding to. See data/exposure_problems.yaml.",
+      "items": {
+        "type": "string",
+        "pattern": "^EP-[0-9]{2}$"
+      },
+      "examples": [["EP-04", "EP-03", "EP-11"]]
+    },
+
+    "jurisdictional_context": {
+      "type": "object",
+      "description": "Jurisdictional declarations for cross-jurisdictional deployments. Each role can sit in one or more jurisdictions; the framework does not assume they overlap.",
+      "additionalProperties": false,
+      "properties": {
+        "data_subjects": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Jurisdictions where data subjects reside. Determines which data-protection regimes apply to the subjects.",
+          "examples": [["UK", "EU"], ["US-state:CA"]]
+        },
+        "controllers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Jurisdictions of data controller(s)."
+        },
+        "operators": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Jurisdictions of infrastructure operator(s) (e.g. cloud regions)."
+        },
+        "cross_border_mechanism": {
+          "type": "string",
+          "description": "Mechanism justifying cross-border data flow if any (e.g. SCCs, adequacy decision, transfer impact assessment).",
+          "examples": ["UK IDTA", "EU SCCs (2021/914)", "adequacy: UK-EU", "section 251 NHS Act 2006"]
+        },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "risk_calibration": {
+      "type": "object",
+      "description": "Optional (schema 1.2). Operational reporting of a DP claim alongside the (ε, δ) stored on pet_components[].parameters. Motivated by Desfontaines (2023) and the interpretable-dp.org toolchain: a single ε hides the privacy trade-off; μ-DP, a stated attack-rate target, and the FPR/FNR trade-off curve give reviewers an operationally legible summary. This block does not replace (ε, δ) — it complements them.",
+      "additionalProperties": false,
+      "properties": {
+        "mu_dp": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Gaussian-DP μ parameter (Dong, Roth & Su 2022). Single-number summary alternative to (ε, δ)."
+        },
+        "attack_target": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Operational framing: name the attack the DP claim is targeting and the rate at which it is bounded.",
+          "properties": {
+            "attack": {
+              "type": "string",
+              "enum": ["MIA", "reconstruction", "singling-out", "linkage"]
+            },
+            "target_advantage": {
+              "type": "number",
+              "description": "Bound on adversary advantage relative to the chance baseline. Example: 'TPR at FPR=0.001 ≤ 0.01' → target_advantage = 0.009."
+            },
+            "target_fpr": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "target_fnr": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "measured_advantage": {
+              "type": "number",
+              "description": "Empirically measured advantage (e.g. worst-record TPR@FPR from a privacy-eval sweep). Populated by ingesting privacy-eval result records."
+            },
+            "evidence_ref": {
+              "type": "string",
+              "description": "Path or URI to the empirical record substantiating measured_advantage (e.g. privacy-eval/results/mia/per_record/.../*.json)."
+            }
+          }
+        },
+        "conversion_regret": {
+          "type": "number",
+          "minimum": 0,
+          "description": "How lossy the μ-DP single-parameter summary is at the relevant operating point. Per Desfontaines, regret values above ~0.01 indicate the summary is materially lossy and the trade-off curve should be reported instead."
+        },
+        "trade_off_curve_ref": {
+          "type": "string",
+          "description": "Path or URI to the FPR-vs-FNR curve data or plot — produced for example by gdpnum.plot or by a privacy-eval ROC sweep."
+        },
+        "operational_interpretation": {
+          "type": "string",
+          "description": "One-line narrative for non-specialist readers: 'MIA against the worst record bounded at TPR=0.025 at FPR=0.001', not 'ε=4'."
+        },
+        "source_library": {
+          "type": "string",
+          "enum": ["gdpnum", "riskcal", "manual", "other"],
+          "description": "Provenance of the μ-DP / regret / curve values."
+        },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "stepwise_chain": {
+      "type": "array",
+      "description": "Stepwise-from-private construction (see STEPWISE_RISK.md). Each entry records one deviation from the completely-private baseline (step 0). Cards SHOULD declare a chain when the deployment uses more than one PET in sequence; the chain makes the architectural rationale auditable step by step.",
+      "items": {
+        "type": "object",
+        "required": [
+          "step",
+          "purpose",
+          "exposure_problem_ref",
+          "pet_added",
+          "trust_assumption_added",
+          "assurance_anchor",
+          "residual_risk"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "step": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Step number. Step 0 is the completely-private baseline; subsequent steps add PETs."
+          },
+          "name": {
+            "type": "string",
+            "description": "Short label for this step."
+          },
+          "purpose": {
+            "type": "string",
+            "description": "Why this step is needed; what does the deployment require that the previous state did not enable?"
+          },
+          "exposure_problem_ref": {
+            "type": "string",
+            "pattern": "^EP-[0-9]{2}$|^baseline$",
+            "description": "T0 exposure problem this step introduces or addresses. Use 'baseline' for step 0 only."
+          },
+          "pet_added": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": ["none", "DP", "DP-L", "DP-C", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE"]
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["DP", "DP-L", "DP-C", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE"]
+                },
+                "minItems": 1
+              }
+            ],
+            "description": "PET primitive(s) added in this step. Use 'none' for step 0 (baseline)."
+          },
+          "trust_assumption_added": {
+            "type": "string",
+            "description": "Trust this step now requires. Use vocabulary from GLOSSARY.md (trusted curator, untrusted curator, honest-but-curious, threshold k-of-n, hardware-anchored, institutional, etc.)."
+          },
+          "assurance_anchor": {
+            "type": "string",
+            "description": "The artefact that makes this step's privacy claim credible (attestation, privacy accountant, protocol specification, output-clearance log, etc.)."
+          },
+          "residual_risk": {
+            "type": "string",
+            "description": "What remains exposed after this step that subsequent steps may need to address."
+          },
+          "notes": { "type": "string" }
         }
       }
     }

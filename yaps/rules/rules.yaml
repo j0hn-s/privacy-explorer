@@ -51,7 +51,7 @@ rules:
       records via gradient inversion or membership inference. Without DP or MPC at
       the aggregation step, no formal bound exists on what the coordinator learns
       from individual updates.
-    condition_logic: "has_primitive('FL') and not has_primitive('DP') and not has_primitive('MPC')"
+    condition_logic: "has_primitive('FL') and not has_any_dp() and not has_primitive('MPC')"
     finding: >
       FL is present but neither DP nor MPC (secure aggregation) are in the stack.
       The aggregation coordinator may observe individual update information.
@@ -68,7 +68,7 @@ rules:
       A TEE provides hardware-enforced in-use confidentiality but does not constrain
       what information is disclosed in outputs. Without DP at the release boundary,
       query results or model outputs may leak individual-level information.
-    condition_logic: "has_primitive('TEE') and not has_primitive('DP') and not has_primitive('ZKP')"
+    condition_logic: "has_primitive('TEE') and not has_any_dp() and not has_primitive('ZKP')"
     finding: >
       TEE is present but no formal output disclosure control (DP or ZKP) is in the
       stack. TEE protects intermediate state only — outputs may still reveal individual
@@ -86,7 +86,7 @@ rules:
       explicit coupling to DP training/release or a documented adversarial audit,
       re-identification risk is underestimated in a significant proportion of
       deployments.
-    condition_logic: "has_primitive('SYN') and not has_primitive('DP') and missing_artefact('membership inference')"
+    condition_logic: "has_primitive('SYN') and not has_any_dp() and missing_artefact('membership inference')"
     finding: >
       SYN is present without DP coupling and without a membership inference audit.
       Synthetic data alone does not guarantee privacy — this is a documented failure
@@ -140,7 +140,7 @@ rules:
       composition accounting (advanced composition, RDP, or similar), the true
       privacy loss over the deployment lifetime is unknown and may substantially
       exceed the per-query epsilon claimed.
-    condition_logic: "has_primitive('DP') and missing_artefact('accountant') and missing_artefact('composition')"
+    condition_logic: "has_any_dp() and missing_artefact('accountant') and missing_artefact('composition')"
     finding: >
       DP is present but no privacy accountant or composition assumptions artefact
       is recorded. Naive composition inflates total epsilon; advanced composition
@@ -160,7 +160,7 @@ rules:
       than the sum, defeating part of the DP guarantee. DP-SGD was designed for
       a trusted curator setting; if the coordinator is untrusted, MPC secure
       aggregation should precede DP noise addition.
-    condition_logic: "has_primitive('FL') and has_primitive('DP') and not has_primitive('MPC')"
+    condition_logic: "has_primitive('FL') and has_any_dp() and not has_dp_variant('local') and not has_primitive('MPC')"
     finding: >
       FL + DP stack without MPC secure aggregation. If the coordinator is modelled
       as honest-but-curious or untrusted, individual DP-noised updates are visible
@@ -178,7 +178,7 @@ rules:
       vendor trust (for TEE) and parameter governance (for DP). If these are not
       explicitly declared in the trust model, the combined assurance claim is
       harder to audit and may be misread as stronger than it is.
-    condition_logic: "has_primitive('TEE') and has_primitive('DP') and missing_artefact('trust model declaration')"
+    condition_logic: "has_primitive('TEE') and has_any_dp() and missing_artefact('trust model declaration')"
     finding: >
       TEE + DP stack without a dual trust model declaration. Document that this
       architecture requires (a) trust in the TEE hardware vendor and attestation
@@ -246,7 +246,7 @@ rules:
     description: >
       A DP deployment without a documented parameter manifest (epsilon, delta,
       noise mechanism, clipping norm, sensitivity) is unauditable.
-    condition_logic: "has_primitive('DP') and missing_artefact('parameter manifest')"
+    condition_logic: "has_any_dp() and missing_artefact('parameter manifest')"
     finding: >
       DP is present but no parameter manifest artefact is recorded. Epsilon, delta,
       noise mechanism, and clipping/sensitivity values must be documented for the
@@ -402,7 +402,7 @@ rules:
       may become unacceptable under composition across millions of releases.
       A parameter governance process (review cadence, composition budget tracking)
       is required.
-    condition_logic: "sector_is('technology') and has_primitive('DP') and scale_is('platform-scale') and missing_artefact('composition')"
+    condition_logic: "sector_is('technology') and has_any_dp() and scale_is('platform-scale') and missing_artefact('composition')"
     finding: >
       Platform-scale technology deployment with DP but no composition accounting.
       At population scale, naive composition of per-release epsilon values produces
@@ -437,7 +437,7 @@ rules:
       NIST SP 800-226 (Draft, 2023) provides evaluation guidelines for differential
       privacy deployments. It is the primary US federal reference for DP parameter
       governance and legal sufficiency assessment.
-    condition_logic: "has_primitive('DP')"
+    condition_logic: "has_any_dp()"
     finding: >
       DP is present. Document alignment with NIST SP 800-226 (Draft) in
       regulatory_context.standards_alignment. This is the primary reference for
@@ -477,3 +477,346 @@ rules:
     references:
       - "GDPR Art. 25 — Data protection by design and by default"
       - "EDPB Guidelines 4/2019 on Art. 25"
+
+  # ─── STEPWISE-CONSTRUCTION VALIDATION (schema 1.1) ──────────────────────────
+  # These rules validate cards that opt into the stepwise-from-private
+  # construction methodology (STEPWISE_RISK.md). Cards without a stepwise_chain
+  # are not penalised by STEP-001; the chain is encouraged but optional.
+
+  - id: STEP-001
+    name: "No stepwise chain declared"
+    category: STEP
+    severity: GREEN
+    description: >
+      The card does not declare a stepwise_chain. Stepwise-from-private
+      construction is recommended for multi-PET deployments because each
+      deviation from the completely-private baseline is documented with its
+      purpose, exposure problem, trust assumption added, and residual risk.
+    condition_logic: "not has_steps() and len(governance_controls) > 0"
+    finding: >
+      Consider declaring a stepwise_chain that documents how this architecture
+      deviates from a completely-private baseline. See STEPWISE_RISK.md for the
+      methodology and CARDS_GUIDE.md for a worked example.
+    references:
+      - "Privacy Explorer — STEPWISE_RISK.md"
+
+  - id: STEP-002
+    name: "Stepwise chain — required field missing on a step"
+    category: STEP
+    severity: RED
+    description: >
+      Every step in a stepwise chain must declare all six fields: purpose,
+      exposure_problem_ref, pet_added, trust_assumption_added, assurance_anchor,
+      residual_risk. A step missing any field is not yet a complete deviation
+      and cannot be evaluated.
+    condition_logic: >
+      has_steps() and not (
+        each_step_has('purpose') and
+        each_step_has('exposure_problem_ref') and
+        each_step_has('pet_added') and
+        each_step_has('trust_assumption_added') and
+        each_step_has('assurance_anchor') and
+        each_step_has('residual_risk')
+      )
+    finding: >
+      One or more steps in the stepwise_chain is missing a required field.
+      Each step must declare purpose, exposure_problem_ref, pet_added,
+      trust_assumption_added, assurance_anchor, and residual_risk before the
+      step can be considered well-formed.
+    references:
+      - "Privacy Explorer — STEPWISE_RISK.md"
+
+  - id: STEP-003
+    name: "Stepwise chain — final residual risk empty or trivial"
+    category: STEP
+    severity: AMBER
+    description: >
+      The final step's residual_risk records what remains exposed after all
+      deviations from the baseline. An empty or trivial residual is implausible
+      for any non-trivial PET stack and suggests the card author has not
+      surfaced the actual residual risk.
+    condition_logic: "has_steps() and not final_residual_declared()"
+    finding: >
+      The final step in the chain has no residual_risk declared. Even
+      defence-in-depth stacks have residuals — hardware vendor compromise,
+      side-channel surfaces not covered, parameter governance drift. Document
+      what remains after all steps have been applied.
+    references:
+      - "Privacy Explorer — STEPWISE_RISK.md"
+
+  - id: STEP-004
+    name: "Stepwise chain — PET added in step not in pet_components"
+    category: STEP
+    severity: AMBER
+    description: >
+      A PET added in a chain step should also appear in the pet_components
+      array. Mismatch suggests the chain and the component list have drifted
+      apart, which weakens the audit story.
+    condition_logic: "has_steps() and not step_pets_match_components()"
+    finding: >
+      At least one step's pet_added is not present in pet_components. Reconcile
+      the stepwise_chain and pet_components — every PET added across the chain
+      should appear as a component.
+    references:
+      - "Privacy Explorer — STEPWISE_RISK.md"
+
+  - id: STEP-005
+    name: "Stepwise chain — only one or two steps"
+    category: STEP
+    severity: INFO
+    description: >
+      A chain with very few steps may not capture the architectural rationale.
+      This is informational; some genuinely simple deployments only have one
+      deviation from baseline.
+    condition_logic: "has_steps() and step_count() < 3 and len(governance_controls) > 0"
+    finding: >
+      The stepwise_chain has fewer than three steps. For a single-PET deployment
+      this can be correct; for multi-PET stacks (FL+TEE+DP, TRE+TEE+DP) the
+      chain typically has four or more steps. Review whether intermediate steps
+      have been collapsed.
+    references:
+      - "Privacy Explorer — STEPWISE_RISK.md"
+
+  # ─── EXPOSURE-PROBLEM (T0) DECLARATION (schema 1.1) ─────────────────────────
+
+  - id: T0-001
+    name: "No exposure problem declared"
+    category: T0
+    severity: GREEN
+    description: >
+      Declaring which T0 exposure problems this card responds to makes the
+      rationale for the chosen PET stack explicit. A card that names neither
+      card-level exposure_problem_refs nor per-step EP refs leaves the reader
+      to infer the architectural rationale.
+    condition_logic: "not declares_exposure_problem()"
+    finding: >
+      No exposure problem references found. Declare exposure_problem_refs at
+      card level or exposure_problem_ref on each step in the stepwise_chain.
+      See EXPOSURE_PROBLEMS.md (T0) for the list of named exposure problems.
+    references:
+      - "Privacy Explorer — EXPOSURE_PROBLEMS.md"
+
+  - id: T0-002
+    name: "FL deployment does not declare EP-04 or EP-02"
+    category: T0
+    severity: INFO
+    description: >
+      Federated learning typically responds to EP-04 (distributed model
+      training where updates may leak) or EP-02 (data cannot leave its source
+      for joint computation). A card with FL that declares neither has an
+      uncommon rationale that may be worth surfacing explicitly.
+    condition_logic: "has_primitive('FL') and not declares_exposure_problem('EP-04') and not declares_exposure_problem('EP-02')"
+    finding: >
+      FL is present but the card declares neither EP-04 nor EP-02. If the
+      FL deployment is for a different reason (e.g. communication-efficiency,
+      not privacy), record that rationale in the card description; if privacy
+      is the rationale, declare the relevant EP.
+    references:
+      - "EXPOSURE_PROBLEMS.md EP-02, EP-04"
+
+  - id: T0-003
+    name: "Stack uses SYN but does not declare EP-05"
+    category: T0
+    severity: INFO
+    description: >
+      Synthetic data is the canonical response to EP-05 (sharing or
+      republishing a dataset-shaped artefact). A SYN deployment without EP-05
+      in the declared exposure problems suggests an unusual rationale that
+      should be made explicit.
+    condition_logic: "has_primitive('SYN') and not declares_exposure_problem('EP-05')"
+    finding: >
+      SYN is present but EP-05 is not declared. Verify whether the synthetic
+      data is being used to share a dataset-shaped artefact (EP-05) or for a
+      different purpose, and declare the appropriate exposure problem.
+    references:
+      - "EXPOSURE_PROBLEMS.md EP-05"
+
+  # ─── DP VARIANT ASSURANCE (schema 1.1) ──────────────────────────────────────
+
+  - id: DP-VAR-001
+    name: "Local DP — per-user budget not documented"
+    category: ASSUR
+    severity: RED
+    description: >
+      Local DP (LDP) typically operates with a per-user, per-time-window
+      privacy budget rather than a single global epsilon. Without this
+      explicitly documented, the LDP privacy claim cannot be sustained over
+      repeated interactions.
+    condition_logic: "has_dp_variant('local') and missing_artefact('per-user')"
+    finding: >
+      DP-L (local DP) is present but no per-user privacy-budget artefact is
+      recorded. LDP requires a per-user, per-time-window budget accounting;
+      population-scale aggregate budgets are not sufficient. Document the
+      per-user budget in the parameter manifest and accountant artefacts.
+    references:
+      - "Erlingsson, Pihur & Korolova (2014) — RAPPOR"
+      - "Tang et al. (2017) — Privacy loss in Apple's LDP implementation"
+
+  - id: DP-VAR-002
+    name: "Central DP — trusted curator and composition theorem not named"
+    category: ASSUR
+    severity: AMBER
+    description: >
+      Central DP relies on a trusted curator that observes raw inputs before
+      adding noise. Both the curator's trust anchor (institutional or
+      hardware-anchored) and the composition theorem used (basic, advanced,
+      RDP, PRV) should be explicitly named.
+    condition_logic: "has_dp_variant('central') and missing_artefact('composition')"
+    finding: >
+      DP-C (central DP) is present but no composition assumption / theorem
+      artefact is recorded. Document which composition theorem the accountant
+      uses (e.g. RDP, PRV, Kairouz et al. advanced composition) and the trust
+      anchor of the curator.
+    references:
+      - "Kairouz, Oh & Viswanath (2015) — advanced composition"
+      - "Mironov (2017) — Rényi DP"
+
+  - id: DP-VAR-003
+    name: "DP family pointer used (DP not DP-L/DP-C)"
+    category: ASSUR
+    severity: INFO
+    description: >
+      The bare `DP` primitive id is retained as a family pointer for legacy
+      compatibility. New cards should declare the specific variant (DP-L or
+      DP-C) so the trust model is unambiguous.
+    condition_logic: "has_primitive('DP')"
+    finding: >
+      This card uses the legacy `DP` primitive id. Schema 1.1 supports `DP-L`
+      (local) and `DP-C` (central) as distinct variants with different trust
+      models. Consider updating to the specific variant.
+    references:
+      - "GLOSSARY.md §1"
+      - "data/primitives.yaml — DP, DP-L, DP-C entries"
+
+  # ─── JURISDICTIONAL CONTEXT (schema 1.1) ────────────────────────────────────
+
+  - id: JURIS-001
+    name: "No jurisdictional context declared"
+    category: GOV
+    severity: AMBER
+    description: >
+      Privacy obligations differ by jurisdiction of data subjects, controllers,
+      and operators. A card that does not declare jurisdictional context
+      cannot be reviewed against the appropriate regulatory regime.
+    condition_logic: "not has_jurisdictional_context() and not scale_is('pilot')"
+    finding: >
+      No jurisdictional_context block is present for this non-pilot deployment.
+      Declare the jurisdictions of data subjects, controllers, and operators —
+      cross-jurisdictional deployments are increasingly common (e.g. GDS 2025)
+      and the framework treats them as a recurring pattern (EP-11).
+    references:
+      - "EXPOSURE_PROBLEMS.md EP-11"
+      - "data/sectors.yaml — idiosyncratic_constraints per sector"
+
+  - id: JURIS-002
+    name: "Cross-jurisdictional deployment without cross-border mechanism"
+    category: GOV
+    severity: RED
+    description: >
+      When data subjects, controllers, or operators sit in different
+      jurisdictions, a cross-border transfer mechanism is typically required
+      (UK IDTA, EU SCCs, adequacy decision, section 251 NHS Act 2006, etc.).
+    condition_logic: "is_cross_jurisdictional() and not governance_controls.get('dpia_reference')"
+    finding: >
+      The jurisdictional_context declares a cross-jurisdictional deployment
+      but no DPIA reference or cross-border mechanism is recorded. Document
+      the legal basis for cross-border data flow (SCCs, adequacy, IDTA, etc.)
+      in jurisdictional_context.cross_border_mechanism and link the DPIA.
+    references:
+      - "EXPOSURE_PROBLEMS.md EP-11"
+      - "GDS (2025) — Using PETs to enable international data sharing"
+
+  - id: JURIS-003
+    name: "Healthcare deployment without DSPT/HIPAA alignment"
+    category: SECTOR
+    severity: AMBER
+    description: >
+      Healthcare deployments typically require alignment with sector-specific
+      assurance regimes (NHS DSPT in the UK, HIPAA Security Rule in the US,
+      HRA/REC approval pathways). The framework's idiosyncratic_constraints
+      block in sectors.yaml lists these.
+    condition_logic: "sector_is('healthcare') and not aligns_to_framework('DSPT') and not aligns_to_framework('HIPAA') and not aligns_to_framework('NHS') and not aligns_to_framework('HRA')"
+    finding: >
+      Healthcare deployment with no DSPT, HIPAA, NHS, or HRA framework
+      alignment declared. The idiosyncratic_constraints block for healthcare
+      lists the relevant regimes; declare at least one in
+      governance_controls.frameworks_applied.
+    references:
+      - "data/sectors.yaml — healthcare idiosyncratic_constraints"
+
+  # ─── RISK CALIBRATION (schema 1.2) ──────────────────────────────────────────
+  # These rules surface the absence of operationally-legible DP reporting on
+  # cards that declare any DP variant. They complement (do not replace) the
+  # existing DP-VAR-* / ASSUR-003 rules, which check for ε/δ parameter
+  # manifests. The risk_calibration block adds the μ-DP / attack-target
+  # framing per Desfontaines (2023) and the interpretable-dp.org toolchain.
+  #
+  # First-iteration severities are intentionally light (GREEN/AMBER/INFO).
+  # Workshop feedback may justify escalating RISKCAL-001 to AMBER in a later
+  # rule-set revision; do not pre-escalate without that signal.
+
+  - id: RISKCAL-001
+    name: "DP declared without operational interpretation"
+    category: RISKCAL
+    severity: GREEN
+    description: >
+      A single ε value (paired with δ) masks the underlying privacy trade-off:
+      different (ε, δ) pairs can have materially different operational privacy
+      properties at the relevant attack operating point (Desfontaines 2023).
+      Cards that declare any DP variant should also declare an operational
+      interpretation — a μ-DP equivalent, a stated attack-rate target, or
+      both — so reviewers can read the privacy claim without re-deriving it.
+    condition_logic: "has_any_dp() and not has_risk_calibration()"
+    finding: >
+      A DP variant is present but no `risk_calibration` block is recorded.
+      Consider adding `risk_calibration.mu_dp` (Gaussian-DP single-parameter
+      summary) or `risk_calibration.attack_target` (e.g. MIA TPR at FPR=0.001
+      bounded at X). The `gdpnum` library converts (ε, δ) to μ-DP and produces
+      the trade-off curve; `riskcal` calibrates noise to a target attack rate.
+    references:
+      - "Desfontaines (2023) — Reporting privacy guarantees in machine learning"
+      - "interpretable-dp.org — gdpnum, riskcal"
+      - "Dong, Roth & Su (2022) — Gaussian Differential Privacy"
+
+  - id: RISKCAL-002
+    name: "μ-DP reported without conversion regret"
+    category: RISKCAL
+    severity: AMBER
+    description: >
+      Collapsing (ε, δ) to a single μ-DP value is lossy in general: the regret
+      between the underlying privacy curve and its single-parameter Gaussian
+      approximation varies across operating points. Reporting μ-DP without
+      bounding the regret hides whether the summary is faithful for the
+      relevant attack target. Per Desfontaines, regret above ~0.01 indicates
+      the single-parameter summary is materially lossy and the full trade-off
+      curve should be reported alongside.
+    condition_logic: "risk_calibration_field('mu_dp') is not None and risk_calibration_field('conversion_regret') is None"
+    finding: >
+      `risk_calibration.mu_dp` is reported but `risk_calibration.conversion_regret`
+      is absent. Compute the regret using `gdpnum` at the operating point of
+      interest; if regret > 0.01, attach a trade-off curve via
+      `risk_calibration.trade_off_curve_ref` instead of relying on μ alone.
+    references:
+      - "Desfontaines (2023) — Reporting privacy guarantees in machine learning"
+      - "interpretable-dp.org — gdpnum"
+
+  - id: RISKCAL-003
+    name: "DP-coupled synthetic data without trade-off curve"
+    category: RISKCAL
+    severity: INFO
+    description: >
+      Synthetic data coupled to DP (P-08 / S-04) benefits from an explicit
+      FPR-vs-FNR trade-off curve over the relevant attack (typically MIA).
+      Single-point ε/δ reporting hides the tail; Carlini et al. (2022) showed
+      that worst-record attack risk can be orders of magnitude higher than
+      the average. The curve makes the tail visible.
+    condition_logic: "has_primitive('SYN') and has_any_dp() and risk_calibration_field('trade_off_curve_ref') is None"
+    finding: >
+      SYN + DP is present but no `risk_calibration.trade_off_curve_ref` is
+      recorded. Produce a curve via `gdpnum.plot` or via an empirical
+      ROC sweep (e.g. from a TAPAS or per-record MIA run) and reference it
+      from the card.
+    references:
+      - "Carlini et al. (2022) — Membership inference attacks from first principles"
+      - "Houssiau et al. (2022) — TAPAS"
+      - "interpretable-dp.org — gdpnum"

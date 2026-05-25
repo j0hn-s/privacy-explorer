@@ -1,7 +1,7 @@
 {
   "card_id": "CARD-healthcare-fl-tee-dp-202605",
-  "schema_version": "1.0",
-  "title": "Healthcare Federated Learning — FL + TEE + DP (S-01 pattern)",
+  "schema_version": "1.1",
+  "title": "Healthcare Federated Learning — FL + TEE + DP-C (S-01 pattern)",
   "description": "Cross-institutional federated training for clinical imaging or screening models, following the NVIDIA FLARE / NHS FLIP pattern. Local data never leaves institution; aggregation runs in a hardware-isolated enclave; DP bounds statistical disclosure from the released model.",
   "created": "2026-05-01",
   "last_updated": "2026-05-01",
@@ -53,7 +53,7 @@
       "parameter_notes": "Enclave measurement must be pinned and verified at each aggregation round start."
     },
     {
-      "primitive_id": "DP",
+      "primitive_id": "DP-C",
       "role": "formal output disclosure bound — noise added during aggregation to limit individual record leakage from the released model",
       "implementation_status": "deployed",
       "tooling": [
@@ -213,20 +213,20 @@
     {
       "name": "TensorFlow Privacy",
       "url": "https://github.com/tensorflow/privacy",
-      "primitive_ids": ["DP"],
+      "primitive_ids": ["DP-C"],
       "maturity": "production"
     },
     {
       "name": "Google dp_accounting",
       "url": "https://github.com/google/differential-privacy/tree/main/python/dp_accounting",
-      "primitive_ids": ["DP"],
+      "primitive_ids": ["DP-C"],
       "maturity": "production",
-      "notes": "RDP and PRV accountants; recommended for FL+DP composition tracking"
+      "notes": "RDP and PRV accountants; recommended for FL+DP-C composition tracking"
     },
     {
       "name": "OpenDP",
       "url": "https://opendp.org/",
-      "primitive_ids": ["DP"],
+      "primitive_ids": ["DP-C"],
       "maturity": "production"
     },
     {
@@ -268,6 +268,64 @@
       "date": "2026-05-01",
       "change": "Initial card created as YAPS example",
       "author": "Privacy Explorer"
+    },
+    {
+      "date": "2026-05-25",
+      "change": "Migrated to schema 1.1: DP → DP-C, added exposure_problem_refs, stepwise_chain, jurisdictional_context",
+      "author": "Privacy Explorer"
+    }
+  ],
+
+  "exposure_problem_refs": ["EP-04", "EP-03", "EP-01", "EP-11"],
+
+  "jurisdictional_context": {
+    "data_subjects": ["UK", "EU"],
+    "controllers": ["UK"],
+    "operators": ["UK", "EU"],
+    "cross_border_mechanism": "UK-EU adequacy; institutional DUAs between sites",
+    "notes": "UK-only and EU-only patient cohorts; operator in EU region with UK control. No US data flow in current scope."
+  },
+
+  "stepwise_chain": [
+    {
+      "step": 0,
+      "name": "Baseline — completely private",
+      "purpose": "Starting state. Patient records sit in each NHS trust's local store; no joint analytics possible.",
+      "exposure_problem_ref": "baseline",
+      "pet_added": "none",
+      "trust_assumption_added": "trivial — each trust trusts itself",
+      "assurance_anchor": "n/a",
+      "residual_risk": "Trivially private; trivially useless for cross-institutional research."
+    },
+    {
+      "step": 1,
+      "name": "Enable distributed computation",
+      "purpose": "Each trust computes model gradients on its own data without raw records leaving the site.",
+      "exposure_problem_ref": "EP-04",
+      "pet_added": "FL",
+      "trust_assumption_added": "honest-but-curious coordinator",
+      "assurance_anchor": "training protocol specification; round-participation audit log (FL layer)",
+      "residual_risk": "Model updates can leak training data via gradient inversion or membership inference; coordinator sees per-trust updates."
+    },
+    {
+      "step": 2,
+      "name": "Bound per-update leakage via central DP",
+      "purpose": "Address the per-update leakage from step 1; bound what the released model reveals about any individual.",
+      "exposure_problem_ref": "EP-04",
+      "pet_added": "DP-C",
+      "trust_assumption_added": "trusted curator (the aggregator) + parameter governance + named composition theorem",
+      "assurance_anchor": "privacy accountant (RDP, ε=4.0, δ=1e-5); DP parameter manifest; composition assumption across 100 rounds",
+      "residual_risk": "Coordinator still sees individual DP-noised updates before summation (the coordinator-visibility gap)."
+    },
+    {
+      "step": 3,
+      "name": "Protect the aggregation environment",
+      "purpose": "The aggregator runs on cloud infrastructure; protect data-in-use from the cloud operator and the host OS.",
+      "exposure_problem_ref": "EP-03",
+      "pet_added": "TEE",
+      "trust_assumption_added": "hardware-anchored trust (vendor + attestation chain)",
+      "assurance_anchor": "attestation report + enclave measurement (per-round); side-channel mitigation declaration",
+      "residual_risk": "Hardware vendor compromise; Spectre-class side channels not covered by declared mitigations; enclave memory limits may constrain model size. NOTE: this stack does NOT use MPC secure aggregation, so the in-enclave coordinator still observes individual updates — closing this gap requires upgrading to S-03 (FL + MPC + DP-C)."
     }
   ]
 }

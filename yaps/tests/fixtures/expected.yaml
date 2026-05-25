@@ -1,0 +1,65 @@
+# Expected findings per fixture.
+#
+# must_fire     — rule IDs that MUST appear in findings for this fixture
+# must_not_fire — rule IDs that MUST NOT appear (regression guard)
+# description   — short note on what this fixture is testing
+#
+# Fixtures are deliberately minimal so a failure has an unambiguous diagnosis.
+
+stepwise_minimal_well_formed:
+  description: "Minimal well-formed stepwise card; all six fields per step; baseline declared; final residual non-empty"
+  must_not_fire:
+    - STEP-002
+    - STEP-003
+    - STEP-004
+    - T0-001
+
+stepwise_missing_field:
+  description: "Step is missing trust_assumption_added — STEP-002 must fire"
+  must_fire:
+    - STEP-002
+
+stepwise_no_final_residual:
+  description: "Final step's residual_risk is empty string — STEP-003 must fire"
+  must_fire:
+    - STEP-003
+
+stepwise_pet_mismatch:
+  description: "Step.pet_added is 'MPC' but pet_components has no MPC — STEP-004 must fire"
+  must_fire:
+    - STEP-004
+
+dpl_no_per_user_budget:
+  description: "DP-L present, no per-user budget artefact — DP-VAR-001 must fire"
+  must_fire:
+    - DP-VAR-001
+
+dpc_no_composition:
+  description: "DP-C present, no composition assumption artefact — DP-VAR-002 must fire"
+  must_fire:
+    - DP-VAR-002
+
+cross_jur_no_mechanism:
+  description: "Cross-jurisdictional context declared but no DPIA reference — JURIS-002 must fire"
+  must_fire:
+    - JURIS-002
+
+no_exposure_problems:
+  description: "Otherwise-valid card with no EP refs anywhere — T0-001 must fire"
+  must_fire:
+    - T0-001
+
+dp_no_risk_calibration:
+  description: "DP-C present, no risk_calibration block — RISKCAL-001 must fire (schema 1.2)"
+  must_fire:
+    - RISKCAL-001
+  must_not_fire:
+    - RISKCAL-002
+    - RISKCAL-003
+
+risk_cal_no_regret:
+  description: "μ-DP reported without conversion_regret — RISKCAL-002 must fire; RISKCAL-001 must NOT fire because the block now exists"
+  must_fire:
+    - RISKCAL-002
+  must_not_fire:
+    - RISKCAL-001

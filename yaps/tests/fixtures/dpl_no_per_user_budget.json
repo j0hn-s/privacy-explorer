@@ -1,0 +1,25 @@
+{
+  "card_id": "CARD-TEST-dpl-no-per-user-202605",
+  "schema_version": "1.1",
+  "title": "TEST: DP-L without per-user budget artefact",
+  "created": "2026-05-25",
+  "status": "draft",
+  "exposure_problem_refs": ["EP-08"],
+  "pet_components": [
+    { "primitive_id": "DP-L", "role": "local DP telemetry", "implementation_status": "deployed" }
+  ],
+  "trust_model": {
+    "summary": "Untrusted curator; clients add noise locally.",
+    "threat_actors": [
+      { "actor": "telemetry aggregator", "capability": "sees noised samples", "mitigated_by": "DP-L", "residual_risk": "population-scale inference still possible at large ε" }
+    ]
+  },
+  "assurance_targets": {
+    "required_artefacts": [
+      { "artefact": "parameter manifest", "status": "exists" },
+      { "artefact": "composition assumption", "status": "exists" }
+    ]
+  },
+  "governance_controls": { "audit_log": true },
+  "deployment_context": { "sector_ref": "technology", "scale": "platform-scale" }
+}

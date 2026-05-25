@@ -1,7 +1,7 @@
 {
   "card_id": "CARD-public-sector-tre-dp-202605",
-  "schema_version": "1.0",
-  "title": "Public Sector Governed Analytics — TRE + DP (P-07 pattern)",
+  "schema_version": "1.1",
+  "title": "Public Sector Governed Analytics — TRE + DP-C (P-07 pattern)",
   "description": "Accredited research access to sensitive administrative data within a Trusted Research Environment, with differential privacy applied at the statistical output release stage. Follows the ONS Secure Research Service / ADR UK pattern.",
   "created": "2026-05-01",
   "last_updated": "2026-05-01",
@@ -33,7 +33,7 @@
       "parameter_notes": "TRE is the primary accountability mechanism. All outputs must pass safe outputs review regardless of DP application."
     },
     {
-      "primitive_id": "DP",
+      "primitive_id": "DP-C",
       "role": "formal statistical disclosure bound applied at output release — DP noise added to released statistics to bound individual-level leakage",
       "implementation_status": "deployed",
       "tooling": [
@@ -188,20 +188,20 @@
     {
       "name": "OpenDP",
       "url": "https://opendp.org/",
-      "primitive_ids": ["DP"],
+      "primitive_ids": ["DP-C"],
       "maturity": "production",
       "notes": "Reference implementation for DP statistics; used in academic and public sector settings"
     },
     {
       "name": "Google Differential Privacy library (Go/Java/C++/Python)",
       "url": "https://github.com/google/differential-privacy",
-      "primitive_ids": ["DP"],
+      "primitive_ids": ["DP-C"],
       "maturity": "production"
     },
     {
       "name": "Tumult Analytics",
       "url": "https://tmlt.io/",
-      "primitive_ids": ["DP"],
+      "primitive_ids": ["DP-C"],
       "maturity": "production",
       "notes": "Used by U.S. Census Bureau DAS; strong composition accounting support"
     }
@@ -225,6 +225,54 @@
       "date": "2026-05-01",
       "change": "Initial card created as YAPS example",
       "author": "Privacy Explorer"
+    },
+    {
+      "date": "2026-05-25",
+      "change": "Migrated to schema 1.1: DP → DP-C, added exposure_problem_refs, stepwise_chain, jurisdictional_context",
+      "author": "Privacy Explorer"
+    }
+  ],
+
+  "exposure_problem_refs": ["EP-06", "EP-01", "EP-09", "EP-08"],
+
+  "jurisdictional_context": {
+    "data_subjects": ["UK"],
+    "controllers": ["UK"],
+    "operators": ["UK"],
+    "cross_border_mechanism": "none required — UK-only data subjects, controller, and operator",
+    "notes": "Single-jurisdiction deployment within the UK statistical system."
+  },
+
+  "stepwise_chain": [
+    {
+      "step": 0,
+      "name": "Baseline — completely private",
+      "purpose": "Starting state. Administrative records sit in their owning departments; no researcher access; no statistical release.",
+      "exposure_problem_ref": "baseline",
+      "pet_added": "none",
+      "trust_assumption_added": "none beyond the data owner",
+      "assurance_anchor": "n/a",
+      "residual_risk": "Trivially private; analysis impossible."
+    },
+    {
+      "step": 1,
+      "name": "Open repeated researcher access under institutional governance",
+      "purpose": "Enable accredited researchers to perform statistical analyses on linked administrative data, across multiple projects over time, with full accountability.",
+      "exposure_problem_ref": "EP-06",
+      "pet_added": "TRE",
+      "trust_assumption_added": "institutional trust (Five Safes: safe people, projects, data, settings, outputs)",
+      "assurance_anchor": "researcher accreditation records; project approval workflow; access audit logs; safe-outputs policy",
+      "residual_risk": "Outputs leaving the TRE can still leak individual-level information via differencing, small-cell disclosure, or quasi-identifier linkage if cleared in error."
+    },
+    {
+      "step": 2,
+      "name": "Bound statistical disclosure at the output layer",
+      "purpose": "Provide a formal mathematical bound on individual-level leakage from released statistics, layered onto human output checking.",
+      "exposure_problem_ref": "EP-01",
+      "pet_added": "DP-C",
+      "trust_assumption_added": "trusted curator (the TRE operator); named composition theorem; parameter governance",
+      "assurance_anchor": "privacy accountant; parameter manifest (ε, δ, sensitivity, mechanism); output-clearance log linked to budget consumption",
+      "residual_risk": "DP parameter choice contested at policy level (Kenny et al. 2021; Muralidhar et al. 2025); composition across a multi-year research programme requires sustained budget governance; auxiliary-data linkage attacks not bounded by DP alone."
     }
   ]
 }

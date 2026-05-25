@@ -1,0 +1,31 @@
+{
+  "card_id": "CARD-TEST-riskcal-no-regret-202605",
+  "schema_version": "1.2",
+  "title": "TEST: μ-DP reported without conversion_regret — RISKCAL-002 must fire; RISKCAL-001 must NOT fire",
+  "created": "2026-05-25",
+  "status": "draft",
+  "exposure_problem_refs": ["EP-01"],
+  "pet_components": [
+    { "primitive_id": "DP-C", "role": "central DP output bound", "implementation_status": "deployed" }
+  ],
+  "trust_model": {
+    "summary": "Trusted curator adds noise to aggregate.",
+    "threat_actors": [
+      { "actor": "external researcher", "capability": "MIA", "mitigated_by": "DP-C", "residual_risk": "..." }
+    ]
+  },
+  "assurance_targets": {
+    "required_artefacts": [
+      { "artefact": "privacy accountant", "status": "exists" },
+      { "artefact": "parameter manifest", "status": "exists" },
+      { "artefact": "composition assumption", "status": "exists" }
+    ]
+  },
+  "governance_controls": { "audit_log": true },
+  "deployment_context": { "sector_ref": "public_sector", "scale": "production" },
+  "risk_calibration": {
+    "mu_dp": 0.5,
+    "source_library": "gdpnum",
+    "operational_interpretation": "μ-DP reported as a summary; regret deliberately omitted to trigger RISKCAL-002."
+  }
+}

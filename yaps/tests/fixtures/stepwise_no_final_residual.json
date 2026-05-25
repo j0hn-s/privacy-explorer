@@ -1,0 +1,47 @@
+{
+  "card_id": "CARD-TEST-no-final-residual-202605",
+  "schema_version": "1.1",
+  "title": "TEST: stepwise chain final step has empty residual_risk",
+  "created": "2026-05-25",
+  "status": "draft",
+  "architecture_pattern": { "pairing_ref": "P-07" },
+  "exposure_problem_refs": ["EP-06"],
+  "pet_components": [
+    { "primitive_id": "TRE", "role": "governed access", "implementation_status": "deployed" }
+  ],
+  "trust_model": {
+    "summary": "...",
+    "threat_actors": [
+      { "actor": "researcher", "capability": "queries", "mitigated_by": "TRE", "residual_risk": "..." }
+    ]
+  },
+  "assurance_targets": {
+    "required_artefacts": [
+      { "artefact": "access audit log", "status": "exists" }
+    ]
+  },
+  "governance_controls": { "output_control": "human-review", "audit_log": true },
+  "deployment_context": { "sector_ref": "public_sector", "scale": "production" },
+  "stepwise_chain": [
+    {
+      "step": 0,
+      "name": "Baseline",
+      "purpose": "no analysis",
+      "exposure_problem_ref": "baseline",
+      "pet_added": "none",
+      "trust_assumption_added": "trivial",
+      "assurance_anchor": "n/a",
+      "residual_risk": "trivially private"
+    },
+    {
+      "step": 1,
+      "name": "TRE",
+      "purpose": "enable governed access",
+      "exposure_problem_ref": "EP-06",
+      "pet_added": "TRE",
+      "trust_assumption_added": "institutional",
+      "assurance_anchor": "Five Safes",
+      "residual_risk": ""
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "card_id": "CARD-TEST-stepwise-minimal-202605",
+  "schema_version": "1.1",
+  "title": "TEST: minimal well-formed stepwise card",
+  "created": "2026-05-25",
+  "status": "draft",
+  "architecture_pattern": { "pairing_ref": "P-07" },
+  "exposure_problem_refs": ["EP-06", "EP-01"],
+  "pet_components": [
+    { "primitive_id": "TRE", "role": "governed access", "implementation_status": "deployed" },
+    { "primitive_id": "DP-C", "role": "output bound", "implementation_status": "deployed" }
+  ],
+  "trust_model": {
+    "summary": "Institutional trust + curator trust.",
+    "threat_actors": [
+      { "actor": "researcher", "capability": "performs queries", "mitigated_by": "TRE + output checking", "residual_risk": "small-cell cleared in error" }
+    ]
+  },
+  "assurance_targets": {
+    "required_artefacts": [
+      { "artefact": "privacy accountant (DP-C)", "status": "exists" },
+      { "artefact": "parameter manifest (DP-C)", "status": "exists" },
+      { "artefact": "composition assumption", "status": "exists" },
+      { "artefact": "output-clearance log (TRE)", "status": "exists" }
+    ]
+  },
+  "governance_controls": {
+    "output_control": "both",
+    "audit_log": true,
+    "dpia_reference": "DPIA-TEST-001",
+    "frameworks_applied": [{ "framework": "Five Safes", "alignment_level": "full" }]
+  },
+  "deployment_context": { "sector_ref": "public_sector", "scale": "production" },
+  "stepwise_chain": [
+    {
+      "step": 0,
+      "name": "Baseline",
+      "purpose": "no analysis",
+      "exposure_problem_ref": "baseline",
+      "pet_added": "none",
+      "trust_assumption_added": "trivial",
+      "assurance_anchor": "n/a",
+      "residual_risk": "trivially private; trivially useless"
+    },
+    {
+      "step": 1,
+      "name": "Open governed access",
+      "purpose": "enable accredited researcher access",
+      "exposure_problem_ref": "EP-06",
+      "pet_added": "TRE",
+      "trust_assumption_added": "institutional",
+      "assurance_anchor": "Five Safes; output-clearance log; access audit",
+      "residual_risk": "cleared outputs may still leak individual-level info"
+    },
+    {
+      "step": 2,
+      "name": "Bound output disclosure",
+      "purpose": "formal mathematical bound on output leakage",
+      "exposure_problem_ref": "EP-01",
+      "pet_added": "DP-C",
+      "trust_assumption_added": "trusted curator + named composition theorem",
+      "assurance_anchor": "privacy accountant (RDP); parameter manifest",
+      "residual_risk": "parameter governance drift; auxiliary-data linkage not bounded by DP alone"
+    }
+  ]
+}

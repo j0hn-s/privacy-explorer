@@ -1,0 +1,70 @@
+{
+  "card_id": "CARD-TEST-pet-mismatch-202605",
+  "schema_version": "1.1",
+  "title": "TEST: step.pet_added (MPC) not in pet_components",
+  "created": "2026-05-25",
+  "status": "draft",
+  "architecture_pattern": { "pairing_ref": "P-01" },
+  "exposure_problem_refs": ["EP-04"],
+  "pet_components": [
+    { "primitive_id": "FL", "role": "distributed training", "implementation_status": "deployed" },
+    { "primitive_id": "DP-C", "role": "output bound", "implementation_status": "deployed" }
+  ],
+  "trust_model": {
+    "summary": "...",
+    "threat_actors": [
+      { "actor": "coordinator", "capability": "sees updates", "mitigated_by": "DP-C", "residual_risk": "..." }
+    ]
+  },
+  "assurance_targets": {
+    "required_artefacts": [
+      { "artefact": "privacy accountant", "status": "exists" },
+      { "artefact": "parameter manifest", "status": "exists" },
+      { "artefact": "composition assumption", "status": "exists" }
+    ]
+  },
+  "governance_controls": { "audit_log": true },
+  "deployment_context": { "sector_ref": "healthcare", "scale": "production" },
+  "stepwise_chain": [
+    {
+      "step": 0,
+      "name": "Baseline",
+      "purpose": "no analysis",
+      "exposure_problem_ref": "baseline",
+      "pet_added": "none",
+      "trust_assumption_added": "trivial",
+      "assurance_anchor": "n/a",
+      "residual_risk": "trivially private"
+    },
+    {
+      "step": 1,
+      "name": "FL",
+      "purpose": "distributed training",
+      "exposure_problem_ref": "EP-04",
+      "pet_added": "FL",
+      "trust_assumption_added": "honest-but-curious coordinator",
+      "assurance_anchor": "training protocol",
+      "residual_risk": "updates leak"
+    },
+    {
+      "step": 2,
+      "name": "Secure aggregation (claimed, but not in components)",
+      "purpose": "blind the coordinator to individual updates",
+      "exposure_problem_ref": "EP-04",
+      "pet_added": "MPC",
+      "trust_assumption_added": "threshold semi-honest",
+      "assurance_anchor": "secure-aggregation spec",
+      "residual_risk": "..."
+    },
+    {
+      "step": 3,
+      "name": "DP-C",
+      "purpose": "bound output leakage",
+      "exposure_problem_ref": "EP-04",
+      "pet_added": "DP-C",
+      "trust_assumption_added": "trusted curator (aggregation step)",
+      "assurance_anchor": "privacy accountant; parameter manifest",
+      "residual_risk": "vendor compromise"
+    }
+  ]
+}

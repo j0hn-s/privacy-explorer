@@ -1,0 +1,32 @@
+{
+  "card_id": "CARD-TEST-no-eps-202605",
+  "schema_version": "1.1",
+  "title": "TEST: otherwise-valid card with no EP declarations anywhere",
+  "created": "2026-05-25",
+  "status": "draft",
+  "pet_components": [
+    { "primitive_id": "TRE", "role": "governed access", "implementation_status": "deployed" },
+    { "primitive_id": "DP-C", "role": "output bound", "implementation_status": "deployed" }
+  ],
+  "trust_model": {
+    "summary": "Institutional + trusted curator.",
+    "threat_actors": [
+      { "actor": "researcher", "capability": "queries", "mitigated_by": "TRE + DP-C", "residual_risk": "minor" }
+    ]
+  },
+  "assurance_targets": {
+    "required_artefacts": [
+      { "artefact": "privacy accountant", "status": "exists" },
+      { "artefact": "parameter manifest", "status": "exists" },
+      { "artefact": "composition assumption", "status": "exists" },
+      { "artefact": "output-clearance log", "status": "exists" }
+    ]
+  },
+  "governance_controls": {
+    "output_control": "both",
+    "audit_log": true,
+    "dpia_reference": "DPIA-TEST-X",
+    "frameworks_applied": [{ "framework": "Five Safes", "alignment_level": "full" }]
+  },
+  "deployment_context": { "sector_ref": "public_sector", "scale": "production" }
+}

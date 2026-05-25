@@ -1,6 +1,6 @@
 {
   "card_id": "CARD-finance-tee-mpc-202605",
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "title": "Cross-Bank Analytics — TEE + MPC (P-05 pattern)",
   "description": "Collaborative fraud detection or credit scoring across multiple financial institutions, using hardware isolation (TEE) to host the MPC computation. Neither institution shares raw transaction data; the TEE hosts the MPC protocol execution and provides hardware-enforced confidentiality alongside cryptographic correctness guarantees.",
   "created": "2026-05-01",
@@ -242,6 +242,54 @@
       "date": "2026-05-01",
       "change": "Initial card created as YAPS example",
       "author": "Privacy Explorer"
+    },
+    {
+      "date": "2026-05-25",
+      "change": "Migrated to schema 1.1: added exposure_problem_refs, stepwise_chain, jurisdictional_context",
+      "author": "Privacy Explorer"
+    }
+  ],
+
+  "exposure_problem_refs": ["EP-02", "EP-03"],
+
+  "jurisdictional_context": {
+    "data_subjects": ["UK", "EU"],
+    "controllers": ["UK", "EU"],
+    "operators": ["UK", "EU"],
+    "cross_border_mechanism": "intra-EEA + UK adequacy; bilateral contracts between participating banks",
+    "notes": "Cross-bank cross-border deployment within UK-EEA only. US bank participation deferred pending review of cross-border AML disclosure obligations."
+  },
+
+  "stepwise_chain": [
+    {
+      "step": 0,
+      "name": "Baseline — completely private",
+      "purpose": "Starting state. Each bank's transaction records sit within its own systems; no inter-bank joint computation.",
+      "exposure_problem_ref": "baseline",
+      "pet_added": "none",
+      "trust_assumption_added": "each bank trusts itself only",
+      "assurance_anchor": "n/a",
+      "residual_risk": "Trivially private; joint fraud detection impossible — fraud patterns spanning banks remain undetected."
+    },
+    {
+      "step": 1,
+      "name": "Enable joint computation without raw data exchange",
+      "purpose": "Allow participating banks to jointly compute fraud-detection signals across their pooled transaction graph without any party seeing another's raw records.",
+      "exposure_problem_ref": "EP-02",
+      "pet_added": "MPC",
+      "trust_assumption_added": "untrusted curator (no single party trusted with all inputs); threshold trust under semi-honest adversary model; corruption bound declared per protocol",
+      "assurance_anchor": "MPC protocol specification; adversary-model declaration; correctness proofs; per-protocol implementation audit",
+      "residual_risk": "Communication overhead is the dominant performance constraint at production transaction volumes; latency under adversarial network conditions not fully characterised."
+    },
+    {
+      "step": 2,
+      "name": "Anchor MPC execution to a hardware-isolated environment",
+      "purpose": "Reduce MPC coordination cost and the trust required in the cloud-hosted coordinator by binding the protocol execution to an attested enclave.",
+      "exposure_problem_ref": "EP-03",
+      "pet_added": "TEE",
+      "trust_assumption_added": "hardware-anchored trust (vendor + attestation chain); cross-layer threat-model fusion (cryptographic + hardware)",
+      "assurance_anchor": "attestation report; enclave measurement; combined cryptographic + hardware audit; benchmark report",
+      "residual_risk": "Hybrid attack surface (cryptanalysis + hardware exploits) requires explicit threat-model fusion to audit; no formal output disclosure bound — MPC output granularity could allow partial inference from released scores."
     }
   ]
 }

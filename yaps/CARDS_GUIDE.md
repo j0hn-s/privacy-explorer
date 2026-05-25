@@ -6,6 +6,8 @@ A Privacy Card is not a static document. It is designed to be updated as the tec
 
 > **Vocabulary.** Trust-assumption, disclosure-risk, and assurance-artefact terms used throughout this guide are defined in [../GLOSSARY.md](../GLOSSARY.md). Card authors should use those terms consistently rather than inventing equivalents.
 
+> **Schema version.** This guide assumes schema 1.1, which adds `stepwise_chain[]`, `exposure_problem_refs[]`, and `jurisdictional_context` as optional fields, and adds `DP-L` (local) and `DP-C` (central) as distinct primitive IDs alongside the legacy `DP` family pointer. Cards on schema 1.0 remain valid; new cards should use 1.1 for full YAPS rule coverage including the `STEP-*`, `T0-*`, `DP-VAR-*`, and `JURIS-*` rule categories.
+
 ---
 
 ## The five layers

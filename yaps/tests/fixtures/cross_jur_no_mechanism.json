@@ -1,0 +1,32 @@
+{
+  "card_id": "CARD-TEST-crossjur-no-mechanism-202605",
+  "schema_version": "1.1",
+  "title": "TEST: cross-jurisdictional context with no DPIA reference",
+  "created": "2026-05-25",
+  "status": "draft",
+  "exposure_problem_refs": ["EP-11"],
+  "jurisdictional_context": {
+    "data_subjects": ["UK", "US"],
+    "controllers": ["UK"],
+    "operators": ["US"]
+  },
+  "pet_components": [
+    { "primitive_id": "FL", "role": "distributed training", "implementation_status": "deployed" },
+    { "primitive_id": "DP-C", "role": "output bound", "implementation_status": "deployed" }
+  ],
+  "trust_model": {
+    "summary": "...",
+    "threat_actors": [
+      { "actor": "operator", "capability": "infra control", "mitigated_by": "FL keeps data local", "residual_risk": "operator visibility into aggregation" }
+    ]
+  },
+  "assurance_targets": {
+    "required_artefacts": [
+      { "artefact": "parameter manifest", "status": "exists" },
+      { "artefact": "composition assumption", "status": "exists" },
+      { "artefact": "privacy accountant", "status": "exists" }
+    ]
+  },
+  "governance_controls": { "audit_log": true },
+  "deployment_context": { "sector_ref": "healthcare", "scale": "production" }
+}

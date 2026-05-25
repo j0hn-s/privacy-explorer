@@ -1,0 +1,25 @@
+{
+  "card_id": "CARD-TEST-dpc-no-composition-202605",
+  "schema_version": "1.1",
+  "title": "TEST: DP-C without composition assumption artefact",
+  "created": "2026-05-25",
+  "status": "draft",
+  "exposure_problem_refs": ["EP-01"],
+  "pet_components": [
+    { "primitive_id": "DP-C", "role": "central DP output bound", "implementation_status": "deployed" }
+  ],
+  "trust_model": {
+    "summary": "Trusted curator adds noise to aggregate before release.",
+    "threat_actors": [
+      { "actor": "external researcher", "capability": "MIA on released statistics", "mitigated_by": "DP-C", "residual_risk": "small-record outliers still vulnerable" }
+    ]
+  },
+  "assurance_targets": {
+    "required_artefacts": [
+      { "artefact": "parameter manifest", "status": "exists" },
+      { "artefact": "per-user accountant", "status": "not-applicable" }
+    ]
+  },
+  "governance_controls": { "audit_log": true },
+  "deployment_context": { "sector_ref": "public_sector", "scale": "production" }
+}

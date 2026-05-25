@@ -1,0 +1,26 @@
+{
+  "card_id": "CARD-TEST-dp-no-riskcal-202605",
+  "schema_version": "1.2",
+  "title": "TEST: DP-C present, no risk_calibration block — RISKCAL-001 must fire",
+  "created": "2026-05-25",
+  "status": "draft",
+  "exposure_problem_refs": ["EP-01"],
+  "pet_components": [
+    { "primitive_id": "DP-C", "role": "central DP output bound", "implementation_status": "deployed" }
+  ],
+  "trust_model": {
+    "summary": "Trusted curator adds noise to aggregate before release.",
+    "threat_actors": [
+      { "actor": "external researcher", "capability": "MIA on released statistics", "mitigated_by": "DP-C", "residual_risk": "..." }
+    ]
+  },
+  "assurance_targets": {
+    "required_artefacts": [
+      { "artefact": "privacy accountant", "status": "exists" },
+      { "artefact": "parameter manifest", "status": "exists" },
+      { "artefact": "composition assumption", "status": "exists" }
+    ]
+  },
+  "governance_controls": { "audit_log": true },
+  "deployment_context": { "sector_ref": "public_sector", "scale": "production" }
+}

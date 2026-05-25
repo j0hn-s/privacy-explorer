@@ -146,6 +146,72 @@ The overall rating is the worst single finding across all evaluated rules. One R
 
 ---
 
+## Using YAPS alongside empirical privacy-attack simulation
+
+YAPS is an assurance-gap model. It asks whether the **evidence** required to substantiate a privacy claim exists, not how a system performs under attack. This makes YAPS complementary to, not a substitute for, empirical privacy-attack simulation — running named attacks (membership inference, reconstruction, singling-out, linkage) against a deployment and measuring what they recover.
+
+In practice, the two views answer different questions about the same architecture, and the strongest privacy posture pairs them. A YAPS card describes what the deployment *claims* and what evidence backs the claim; an empirical evaluation tests whether the claim holds under a stated adversary. A worked example pairing the two — the `privacy-eval` evaluation of the Solid-based OXFORDIA federated-compute library, with worst-record MIA sweep, Dinur–Nissim reconstruction, and Kaplan–Meier singling-out audits — illustrates the pattern: empirical findings feed back into the card's residual-risk declarations, and YAPS findings flag where the empirical layer is needed.
+
+### What metrics earn their place in the empirical layer
+
+The metrics that proved useful in that evaluation generalise to any stack of similar shape:
+
+- **Membership-inference attack AUC** as a population-average summary, paired with **TPR at fixed low FPR** (typically 0.01 or 0.001) to expose the worst-record tail that average AUC hides. Carlini et al. (2022) and Watson et al. (2022) argue this pairing is non-optional: a deployment with AUC ≈ 0.5 can still permit MIA on outlier records at 25–40× the chance baseline. Per-record vulnerability sweeps make this visible.
+- **Reconstructed-fraction at staged query budgets** (Q = 100, 1000, 10 000) for any aggregation API. The phase transition at Q ≈ N is a textbook Dinur–Nissim signature; the metric exposes whether the deployment is one query budget away from full reconstruction.
+- **Singled-out count and minimum risk-set size** for any time-to-event or per-record release. These are the operational form of the Article 29 WP / NIST SP 800-188 singling-out criterion; if either is non-trivial, no aggregation has occurred where aggregation was the claim.
+- **Mean / median / p95 / p99 absolute reconstruction error** alongside the headline reconstruction fraction, because a "0% reconstructed within tolerance" headline can mask values reconstructed to within a meaningful margin.
+
+A useful evaluation reports each metric *both* averaged and at the tail — the average-case story rarely tells the full story, and a benchmark that hides outliers will produce a card that overstates its own assurance.
+
+### What to benchmark against
+
+The benchmark surfaces depend on what the card is claiming:
+
+1. **The deployment's own claimed assurance.** If the card declares DP-C with ε = 4, the empirical MIA AUC for the worst record should be compatible with that ε under the relevant composition theorem. A measured MIA materially exceeding the theoretical bound signals either a parameterisation error, a composition-accounting error, or an unrecognised leakage channel.
+2. **A mechanism baseline from the literature.** Synthetic-data fidelity attacks compare against TAPAS or the NIST DP-Synthetic Challenge methodology; MIA compares against shadow-model AUC under Shokri (2017) and Carlini (2022); reconstruction compares against Dinur–Nissim's theoretical query-count threshold.
+3. **A non-private control.** What does the same evaluation produce on the deployment with the PET layer removed? This bounds the PET's contribution to the overall posture and surfaces over-claiming when the PET adds little.
+4. **A standards crosswalk.** NIST SP 800-188 names three disclosure types (identity, attribute, membership); Article 29 WP 05/2014 names three re-identification criteria (singling-out, linkability, inference). The evaluation should exercise all three failure modes; if it tests only one, the card's claim that all three are addressed is unsupported.
+
+The OXFORDIA evaluation took this seriously after an early critique that average-case MIA undersells worst-record risk and that the bridge layer (the Python emulator) might not faithfully reproduce the actual plugin. Both critiques were addressed in a second pass — per-record sweep, cross-validation against the actual TypeScript plugin via a Node CLI wrapper — and the result was a stronger card. The lesson generalises: a YAPS card and an empirical evaluation should be revisable in light of each other.
+
+### How the approach differs across PET stacks, sectors, and data-use intents
+
+The same metrics rarely matter equally across deployments. Differences worth surfacing on the card:
+
+**Per PET stack.**
+- `FL + DP-C` (P-01) — MIA on the released model is the headline; per-record sweep is the priority refinement; reconstruction is less direct.
+- `FL + MPC + DP-C` (S-03) — coordinator-blindness should be tested separately from output disclosure: the empirical test for the MPC layer is correctness + non-leakage of intermediate state, distinct from the DP layer's MIA bound.
+- `TRE + DP-C` (P-07) — output-clearance logs are the canonical artefact; the empirical work is singling-out audits of the cleared outputs over time, not attacks on a model.
+- `SYN + DP-C` (P-08) — TAPAS-style attacks on the synthetic release are the canonical empirical layer; the evaluation needs to also report utility vs. real-data baseline because a "perfectly private" synthetic dataset that has lost utility is not deployment-grade.
+- TEE-anchored stacks — empirical attacks on the API output channel must be distinguished from attacks on the enclave itself; the latter is usually out of scope for an application-level evaluation and is instead the vendor's responsibility, but the card should declare which side of the boundary is being tested.
+- ZKP-bearing stacks (P-06) — empirical work is closer to circuit auditing than statistical attack; the metrics are under-constraint analysis and benchmark reproducibility, not AUC.
+
+**Per sector.**
+- *Healthcare* — small subgroups bite hardest; the worst-record sweep is essential; clinical validity (AUROC, sensitivity / specificity) is benchmarked alongside privacy, because a card that records a strong privacy claim with no utility evidence is not deployable. The `idiosyncratic_constraints` block for healthcare in `data/sectors.yaml` lists what the sector expects.
+- *Public sector / official statistics* — composition leakage across a long programme of releases is the dominant concern; the relevant metric is *cumulative* privacy loss tracked by an accountant, not single-release AUC. Empirical work focuses on differencing attacks against published table patterns.
+- *Finance* — adversarial reconstruction is the most credible threat in cross-bank fraud or risk-pooling contexts; the metric is reconstructed fraction at production query budgets; the assurance audience is model-risk governance, so reproducibility and explainability constraints often rule out stochastic mechanisms whose outputs cannot be re-derived.
+- *Technology platforms* — per-user, per-time-window budget accounting for DP-L is the metric, and the empirical work is *longitudinal* (does the budget hold over months of telemetry?) rather than one-shot.
+- *Web3 / verifiable infrastructure* — circuit correctness and prover-cost reproducibility are the empirical metrics; classical re-identification attacks rarely apply.
+
+**Per data type and data-use intent.**
+- *Tabular records with rich quasi-identifiers* — singling-out and linkage are the relevant attacks; auxiliary-data tests should be part of the evaluation.
+- *Time-to-event data* — per-step Kaplan-Meier disclosure (singling-out at the curve) is a specific failure mode; the relevant metrics are singled-out count and minimum risk-set size, not AUC.
+- *Free text* — re-identification via ML methods (Manzanares-Salor et al. 2024) is the relevant attack; the empirical layer needs ML adversaries, not statistical ones.
+- *Genomic data* — linkage to public genomic resources and Homer-style allele-frequency attacks are sector-specific failure modes; the framework's general primitives are insufficient on their own, and a domain-specific audit is typically required.
+- *Use intent: research vs. statistical release vs. production decision-making* — the threshold of actionability differs sharply. A research-grade card may accept residual risk that a production-decision card must not, because the harm calculus is different. The card should declare the use intent explicitly; the empirical evaluation should be calibrated against it.
+
+Across these variants, the YAPS finding is unchanged in structure: *which assurance anchors are required for the card's claim, and which are missing*. What changes is the empirical evidence that supports each anchor — the metrics, the benchmarks, the adversary model. The two layers are most useful when they iterate against each other: empirical attacks reveal which claims actually hold under pressure, and the card revises to declare the residual that the empirical layer surfaced.
+
+### Reporting DP claims operationally: μ-DP, conversion regret, and the trade-off curve
+
+A separate observation, also pushed by the empirical evaluation, is that **single-ε reporting is not enough on the card side either**. Desfontaines (2023, *Reporting privacy guarantees in machine learning*) argues that two DP deployments with the same ε can have materially different privacy properties at the attack operating point that actually matters, because (ε, δ) is a piecewise-linear boundary on the underlying trade-off curve and a single number hides the curve's shape. The card-level analogue of the per-record vulnerability sweep is therefore: **report the curve, not just the point**.
+
+Schema 1.2 introduces an optional `risk_calibration` block on the card to carry this reporting. The block accepts a μ-DP single-parameter summary (Gaussian-DP per Dong, Roth & Su 2022), an `attack_target` declaring which attack the claim is targeting and at what advantage / FPR / FNR, a `conversion_regret` value bounding how lossy the μ-DP summary is at the operating point of interest, and a `trade_off_curve_ref` pointing to FPR-vs-FNR data when the regret is non-negligible. The `gdpnum` library (interpretable-dp.org) does the (ε, δ) → μ-DP conversion and produces the curve; `riskcal` (same group) calibrates noise to a target attack rate and so closes the empirical ↔ assurance loop in the other direction. The two libraries split naturally: `gdpnum` is a card-reporting helper, `riskcal` is an attack-simulation helper, and the same μ-DP value flows between them.
+
+The corresponding rule category is **RISKCAL-*** (rules.yaml). RISKCAL-001 (GREEN, best-practice first iteration) fires when any DP variant is declared but no `risk_calibration` block exists; RISKCAL-002 (AMBER) fires when μ-DP is reported without the regret bound; RISKCAL-003 (INFO) fires when DP-coupled synthetic data lacks a trade-off curve. The severities are deliberately light for the first iteration — the framework's intent is to nudge cards toward operationally legible reporting without breaking existing GREEN cards. Workshop feedback may justify escalating RISKCAL-001 to AMBER in a later revision.
+
+---
+
 ## What this model does not do
 
 - **Quantify re-identification probability.** The model cannot tell you how likely a specific attack is. It tells you whether the evidence exists to rule it out.
