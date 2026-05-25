@@ -34,6 +34,7 @@ A companion repository to the survey paper *Survey of PETs Adoption in Real-Worl
 | [yaps/rules/rules.yaml](yaps/rules/rules.yaml) | Risk rule set — fork to contest or extend |
 | [yaps/RISK_MODEL.md](yaps/RISK_MODEL.md) | How the risk model works — logic, NIST/NCSC alignment, privacy vs security distinction |
 | [yaps/CARDS_GUIDE.md](yaps/CARDS_GUIDE.md) | Modular card guide |
+| [workbench/](workbench/) | **WIP** local sandbox — Dockerised FastAPI + Elasticsearch app that consumes the framework's canonical YAML, schemas, and rules for workshop use |
 
 ---
 
@@ -199,6 +200,26 @@ The maturity stages referenced in T4 are defined as follows. Technical robustnes
 
 ---
 
+## How to construct a privacy card
+
+Cards in this repository are built using the **stepwise-from-private** methodology in [STEPWISE_RISK.md](STEPWISE_RISK.md). The short version, for readers who want the construction shape before reading the full document:
+
+1. **Start at step 0 — the completely-private baseline.** Data sits at source; no flow; no analysis; trivial privacy and trivial utility.
+2. **Each subsequent step is one deviation from baseline.** A step adds a single PET (or a coordinated bundle) for one named purpose.
+3. **Every step records the same six fields:**
+   - `purpose` — why this step is needed.
+   - `exposure_problem_ref` — the [T0](EXPOSURE_PROBLEMS.md) `EP-` identifier this step introduces or addresses.
+   - `pet_added` — the T1 primitive(s) added (e.g. `FL`, `DP-C`, `TEE`).
+   - `trust_assumption_added` — the trust the step now requires, in [glossary](GLOSSARY.md) vocabulary.
+   - `assurance_anchor` — the artefact that makes the step's privacy claim credible.
+   - `residual_risk` — what remains exposed for subsequent steps to address.
+4. **The card is the ordered chain of steps.** A reviewer reads the chain top-to-bottom and asks: is each step's purpose legitimate, is each assurance anchor produced, is each trust assumption acceptable, and is the final residual tolerable for the use?
+5. **YAPS validates the chain.** The rule engine (`yaps/engine/risk_engine.py`) checks that each step is well-formed (`STEP-*` rules), that the declared exposure problems align with the chosen PETs (`T0-*`), that DP variants have the right per-variant artefacts (`DP-VAR-*`), and that cross-jurisdictional deployments declare a cross-border mechanism (`JURIS-*`).
+
+[yaps/cards/examples/cross_jurisdictional_fl_tee_dpc.json](yaps/cards/examples/cross_jurisdictional_fl_tee_dpc.json) is the worked example of all five points above.
+
+---
+
 ## YAPS — Privacy Card Architecture
 
 YAPS (Yet Another Privacy Sandbox) is the practitioner-facing component of this repository. Where the explorer tables describe *what exists and how it combines*, YAPS asks: *what happens when you commit to a specific architecture in a specific context?*
@@ -217,7 +238,13 @@ A **Privacy Card** is a structured JSON document with five layers, each independ
 
 Cards reference both T0 exposure problems (the rationale for each PET choice) and T1–T4 identifiers (the anchor to the reference base).
 
-The **risk engine** evaluates a card against the rule set in [yaps/rules/rules.yaml](yaps/rules/rules.yaml) and produces a traffic-light report (🔴 RED / 🟡 AMBER / 🟢 GREEN). The **interactive frontend** lets practitioners compose and evaluate architectures in a browser without any tooling. Full documentation is in [yaps/](yaps/).
+The **risk engine** evaluates a card against the rule set in [yaps/rules/rules.yaml](yaps/rules/rules.yaml) and produces a traffic-light report (🔴 RED / 🟡 AMBER / 🟢 GREEN). The **interactive frontend** ([yaps/frontend/index.html](yaps/frontend/index.html)) lets readers compose and evaluate architectures in a browser without any tooling — useful for drive-by readers and quick demos. Full documentation is in [yaps/](yaps/).
+
+For workshop use, a persistent local sandbox is available in [`workbench/`](workbench/): a Dockerised FastAPI + Elasticsearch app that consumes the framework's canonical YAML, schemas, and rules. Practitioners can author, save, version, search, and re-evaluate multiple cards over a workshop session, and ingest result records from [`privacy-eval/`](privacy-eval/) directly into a card's schema 1.2 `risk_calibration` block. The workbench is explicitly **WIP** — research scaffolding, local-only, no auth — see [`workbench/limitations.md`](workbench/limitations.md). It coexists with the single-file frontend; they serve different audiences.
+
+### Schema 1.2 — operational reporting of DP claims
+
+Schema 1.2 adds an optional `risk_calibration` block to the card, allowing DP claims to be reported as a μ-DP value, an operational attack-rate target, a conversion regret bound, and a reference to an FPR/FNR trade-off curve — alongside the existing (ε, δ). This addresses the critique that single-ε reporting hides the underlying privacy trade-off (Desfontaines 2023). The tooling integration uses [interpretable-dp.org](https://interpretable-dp.org/)'s **`gdpnum`** (μ-DP conversion + curves; card-side reporting helper) and **`riskcal`** (noise calibration from a target attack rate; attack-simulation helper). A new `RISKCAL-*` rule category in YAPS nudges cards toward this richer reporting; current severities are GREEN/AMBER/INFO — workshop feedback may justify later escalation.
 
 ---
 
@@ -239,6 +266,11 @@ privacy-explorer/
 │   ├── pairings.yaml               # T2 canonical source (survey-paper-anchored)
 │   ├── stacks.yaml                 # T3 canonical source
 │   └── sectors.yaml                # T4 canonical source (idiosyncratic constraints)
+├── workbench/                      # WIP local sandbox (Dockerised FastAPI + Elasticsearch)
+│   ├── README.md                   # Setup + scope
+│   ├── limitations.md              # What this is NOT (no auth, no TLS, no multi-user)
+│   ├── docker-compose.yml          # ES + backend orchestration
+│   └── backend/                    # FastAPI app importing yaps.engine.risk_engine
 ├── workshops/                      # Workshop materials (W1–W4) for testing the framework
 │   ├── README.md
 │   ├── W1-exposure-problems.md

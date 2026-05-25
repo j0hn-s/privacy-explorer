@@ -287,6 +287,58 @@ flowchart TD
 
 ---
 
+## Diagram 5 — Workbench: how `/workbench/` sits alongside YAPS
+
+```mermaid
+flowchart LR
+    classDef canon fill:#fff8e1,stroke:#f9a825,color:#1a1a1a
+    classDef yaps  fill:#e8f5e9,stroke:#2e7d32,color:#1a1a1a
+    classDef wb    fill:#e3f2fd,stroke:#1565c0,color:#1a1a1a
+    classDef pe    fill:#fce4ec,stroke:#c62828,color:#1a1a1a
+    classDef store fill:#ede7f6,stroke:#5e35b1,color:#1a1a1a
+
+    subgraph CANON["Canonical sources (read-only)"]
+        D0["data/exposure_problems.yaml (T0)"]:::canon
+        D1["data/primitives.yaml (T1)"]:::canon
+        D2["data/pairings.yaml (T2)"]:::canon
+        D3["data/stacks.yaml (T3)"]:::canon
+        D4["data/sectors.yaml (T4)"]:::canon
+        SCHEMA["yaps/schemas/privacy_card.schema.json (1.0/1.1/1.2)"]:::canon
+        RULES["yaps/rules/rules.yaml"]:::canon
+        ENGINE["yaps/engine/risk_engine.py"]:::yaps
+    end
+
+    subgraph WB["workbench/ (WIP local sandbox)"]
+        BACKEND["FastAPI backend\n— routes: reference, cards,\nevaluate, rules, search,\ningest-eval"]:::wb
+        FRONT["Server-rendered Jinja\n+ HTMX + Alpine.js"]:::wb
+    end
+
+    subgraph PE["privacy-eval/"]
+        RESULTS["results/.../*.json\n(MIA, reconstruction, KM)"]:::pe
+    end
+
+    subgraph ES["Elasticsearch (the only writable surface)"]
+        C1["cards-v1"]:::store
+        C2["card-versions-v1"]:::store
+        C3["evaluations-v1"]:::store
+    end
+
+    D0 & D1 & D2 & D3 & D4 -->|read at request time| BACKEND
+    SCHEMA -->|schema validation| BACKEND
+    RULES -->|hot-reload per eval| BACKEND
+    ENGINE -->|direct Python import| BACKEND
+    RESULTS -->|POST /api/evaluate/.../ingest-eval| BACKEND
+    BACKEND <-->|async ES client| C1
+    BACKEND -->|append| C2
+    BACKEND -->|append| C3
+    FRONT <-->|HTMX| BACKEND
+    BACKEND -->|render Jinja| FRONT
+```
+
+The workbench owns no canonical state; everything mutable lives in Elasticsearch, everything immutable lives on the host filesystem (mounted `:ro`). The existing single-file [yaps/frontend/index.html](yaps/frontend/index.html) is not displaced — it remains the zero-server surface for drive-by readers.
+
+---
+
 ## Suggested Further Iterations
 
 The following changes would materially strengthen this resource. They are ordered roughly by impact.
