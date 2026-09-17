@@ -1,11 +1,21 @@
-.DS_Store 
-survey_paper_notes.txt
-
+# OS
 .DS_Store
 
+# Python
+__pycache__/
+*.pyc
+
+# Private/working notes — not framework content
+survey_paper_notes.txt
+
+# Sibling evaluation harness — separate repo/target, not part of this push
 /privacy-eval
 
-.MANUSCRIPT_SUGGESTIONS.md
-
+# Workshop facilitator's private notes (rest of workshops/ is public framework content)
 /workshops/FACILITATOR_NOTES.md
 
+# Local workbench dev config — .env.example is the tracked template
+workbench/.env
+
+# Schema-migration backup snapshots — transient working artifacts, not permanent content
+*.1_2.bak

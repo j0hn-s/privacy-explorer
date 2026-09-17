@@ -10,7 +10,7 @@ Privacy Explorer is designed to be forked, contested, and extended. The YAML dat
 
 ### Explorer table data (`data/`)
 
-The YAML files in `data/` are the canonical source for all four tables. Fork freely — they are designed to be revised.
+The YAML files in `data/` are the canonical source for all five tables. Fork freely — they are designed to be revised. **After editing any `data/*.yaml` file, run `python scripts/generate_tables.py`** to regenerate the corresponding `README.md` tables — do not hand-edit the table rows between the `<!-- AUTOGEN:Tn -->` markers, they will be overwritten. `scripts/generate_tables.py --check` (non-zero exit if stale) is suitable for a pre-commit hook or CI step.
 
 **Contributions that are most useful:**
 - **Contested maturity assessments** — if deployment evidence places a combination at a different stage than the current entry, note the evidence in the `maturity_notes` field. The `confidence` field exists precisely to signal how contestable an entry is.
@@ -29,6 +29,10 @@ New cards should represent a real deployment pattern with an honest trust model 
 ### Diagrams (`DIAGRAM.md`)
 
 New Mermaid diagrams extending the combination network, sector map, or card architecture views are welcome. Follow the existing `classDef` styling.
+
+### Tooling pointers (`TOOLING.md`)
+
+A much lower bar than the tool-endorsement rules above. `TOOLING.md` is a loosely-maintained "where to start looking" index, not a vetted list — a one-line addition, correction, or removal with a link or a short reason is enough. No version pinning; if a version matters for a specific claim, say so inline. This page is expected to drift and be corrected by contributors rather than kept current from one side.
 
 ---
 
