@@ -1,0 +1,278 @@
+{
+  "card_id": "CARD-healthcare-sdc-tre-202609",
+  "schema_version": "2.0",
+  "title": "Healthcare AI Subgroup Calibration Release — SDC + TRE (P-09 pattern)",
+  "description": "Frequency-rule suppression and category coarsening applied to a subgroup calibration/fairness-audit table for a deployed clinical AI risk-prediction model, released to an external clinical-safety oversight body through a governed research environment. Deliberately included as a contrast to the S-01 (FL+TEE+DP-C) anchor card: SDC is a legacy disclosure-control technique with no formal privacy definition, included to test whether the card structure and rule engine generalise to that technique family — not because it is the preferred choice for this use case.",
+  "created": "2026-09-02",
+  "last_updated": "2026-09-02",
+  "status": "review",
+  "authors": [
+    "Privacy Explorer — example card"
+  ],
+  "architecture_pattern": {
+    "pairing_ref": "P-09",
+    "custom": false
+  },
+  "pet_components": [
+    {
+      "primitive_id": "SDC",
+      "role": "output-level disclosure control on the released subgroup calibration table — coarsens demographic/diagnosis categories and suppresses small cells before release",
+      "implementation_status": "deployed",
+      "parameters": {
+        "frequency_rule_threshold": 10,
+        "dominance_rule": "not applicable — frequency table of predicted-vs-observed outcome counts, no magnitude aggregate to dominate",
+        "rounding_method": "not used — coarsening applied via category generalisation, not rounding",
+        "generalisation_hierarchy": "age: 5-year bands generalised to 10-year bands; ethnicity: local sub-categories generalised to ONS 5-category classification",
+        "suppression_method": "primary: any cell < 10 validation-cohort patients; secondary: complementary cell suppressed in any row/column with exactly one primary-suppressed cell, re-checked against the prior quarter's release for shared margins"
+      },
+      "parameter_notes": "Thresholds and generalisation hierarchy re-applied each quarterly release; the same hierarchy is held constant across quarters specifically so consecutive releases can be checked against each other for margin consistency, per the trust's Statistical Disclosure Control policy."
+    },
+    {
+      "primitive_id": "TRE",
+      "role": "governed release environment — the trust's information governance / Statistical Disclosure Control lead reviews the coarsened and suppressed table before it leaves the trust's Secure Data Environment",
+      "implementation_status": "deployed",
+      "parameters": {
+        "output_checking": "human review by trust Statistical Disclosure Control lead, sign-off by information governance team",
+        "access_regime": "accredited external clinical-safety oversight body under a data access agreement; no public release"
+      },
+      "parameter_notes": "Follows the trust's existing Safe Outputs process, the same process used for non-AI statistical releases — not a bespoke process built for this AI model."
+    }
+  ],
+  "trust_model": {
+    "summary": "The trust that trained and deployed the clinical AI model is the data controller and trusted curator of both the validation-cohort records and the model's output distribution. The subgroup calibration table is produced by matching the model's predictions against observed outcomes for the validation cohort, then released periodically to an external clinical-safety oversight body via the trust's Secure Data Environment. The oversight body, and any researcher subsequently granted access to the release, are treated as untrusted with respect to underlying patient-level records — they should learn only what the coarsened, suppressed table's cell counts convey.",
+    "threat_actors": [
+      {
+        "actor": "external oversight-body reviewer or secondary researcher",
+        "capability": "receives the released table and may attempt to combine it with other releases sharing the same margins (a prior quarter's table, a related trust-level statistic) to recover a suppressed cell by subtraction, or to identify a rare demographic-diagnosis combination that survived coarsening",
+        "mitigated_by": "SDC — frequency-rule threshold plus secondary suppression checked against the prior quarter's release; TRE output-clearance review before each release",
+        "residual_risk": "Secondary suppression is computed release-by-release; a motivated intruder holding several quarters' releases may still be able to bound a suppressed cell more tightly than any single release reveals on its own — a known difficulty with recurring SDC releases (Cox 1980) that classical practice manages by output-checker judgement rather than a portable across-release accounting mechanism."
+      },
+      {
+        "actor": "an actor with independent knowledge of the deployed model's behaviour (e.g. query access to the model, or a comparable model trained on similar data)",
+        "capability": "could in principle use knowledge of how the model scores a given patient profile to narrow down which coarsened or suppressed cell an individual falls into — a disclosure surface the frequency rule and generalisation hierarchy, calibrated against raw respondent tabulations rather than model-derived score distributions, were not designed to bound",
+        "mitigated_by": "coarsened category boundaries are set independently of the model's own decision thresholds, so aligning model knowledge to a released cell requires more than reading the table",
+        "residual_risk": "Not yet evaluated for this deployment — see the model-derived disclosure re-validation item under assurance_targets and residual_risks. This is exactly the gap SDC-005 is designed to surface."
+      }
+    ],
+    "out_of_scope_threats": [
+      "Attacks against the AI model itself (membership inference, gradient inversion) via API or query access — out of scope for this card, which concerns the released aggregate table only; see the healthcare_fl_tee_dp.json card family for model-facing attacks",
+      "Re-identification via linkage to the underlying training data, as opposed to the released calibration table"
+    ]
+  },
+  "assurance_targets": {
+    "required_artefacts": [
+      {
+        "artefact": "frequency-rule threshold declaration",
+        "status": "exists",
+        "evidence": {
+          "location": "internal/sdc/threshold_policy_v3.pdf",
+          "evidence_class": "reproducible-record"
+        },
+        "notes": "Minimum cell size = 10 validation-cohort patients, per trust Safe Outputs policy."
+      },
+      {
+        "artefact": "coarsening/generalisation hierarchy declaration",
+        "status": "exists",
+        "evidence": {
+          "location": "internal/sdc/generalisation_hierarchy_v3.pdf",
+          "evidence_class": "reproducible-record"
+        }
+      },
+      {
+        "artefact": "primary and secondary suppression pattern",
+        "status": "exists",
+        "evidence": {
+          "location": "internal/sdc/suppression_log_2026q3.csv",
+          "evidence_class": "reproducible-record"
+        }
+      },
+      {
+        "artefact": "disclosure-risk evaluation (motivated-intruder simulation)",
+        "status": "planned",
+        "notes": "Not routinely run for this release series to date; trust SDC lead has scheduled a motivated-intruder test ahead of the next release."
+      },
+      {
+        "artefact": "model-derived disclosure re-validation",
+        "status": "planned",
+        "notes": "Open item: whether the frequency rule and generalisation hierarchy — designed for raw respondent tabulations — adequately bound disclosure risk when the table is derived from a trained model's predictions has not yet been separately assessed. Tracked as a named gap rather than assumed away (see SDC-005)."
+      },
+      {
+        "artefact": "utility-loss report relative to the uncoarsened table",
+        "status": "exists",
+        "evidence": {
+          "location": "internal/sdc/utility_loss_2026q3.pdf",
+          "evidence_class": "reproducible-record"
+        }
+      },
+      {
+        "artefact": "output-clearance workflow and decision log",
+        "status": "exists",
+        "evidence": {
+          "location": "internal/governance/output_clearance_log.csv",
+          "evidence_class": "reproducible-record"
+        }
+      }
+    ],
+    "current_maturity_stage": 2,
+    "maturity_justification": "The output-checking process itself (Safe Outputs, frequency-rule suppression) is long-established trust practice at stage 3-4. This specific deployment is held at stage 2 because the model-derived disclosure re-validation has not been completed — the classical process's maturity does not automatically transfer to a table derived from an AI model's outputs."
+  },
+  "governance_controls": {
+    "output_control": "human-review",
+    "access_control": "Access to the SDE-hosted release restricted to the accredited external clinical-safety oversight body under a data access agreement; any further re-release requires trust information-governance approval",
+    "change_control": "Threshold and generalisation-hierarchy changes require trust Statistical Disclosure Control lead sign-off and a change-control log entry",
+    "audit_log": true,
+    "dpia_reference": "DPIA-AI-CALIBRATION-2026-011",
+    "frameworks_applied": [
+      {
+        "framework": "Five Safes Framework",
+        "alignment_level": "full",
+        "notes": "Safe people (accreditation), safe projects (approved oversight remit), safe data (coarsened/suppressed), safe settings (SDE), safe outputs (this release)."
+      },
+      {
+        "framework": "NHS Digital Data Security and Protection Toolkit (DSPT)",
+        "alignment_level": "partial"
+      }
+    ]
+  },
+  "deployment_context": {
+    "sector_ref": "healthcare",
+    "sub_sector": "clinical AI model governance — subgroup calibration and fairness-audit reporting",
+    "cps_subject_type": "patient",
+    "data_subjects_jurisdiction": [
+      "UK"
+    ],
+    "scale": "limited-production"
+  },
+  "regulatory_context": {
+    "applicable_regulations": [
+      {
+        "regulation": "UK GDPR",
+        "jurisdiction": "UK",
+        "relevant_articles": [
+          "Art. 25 (data protection by design)",
+          "Art. 35 (DPIA)",
+          "Art. 9 (special category data)"
+        ],
+        "alignment_status": "partial",
+        "gap_notes": "Art. 9 basis documented for the underlying clinical validation cohort (Art. 9(2)(h)); the calibration-table release itself is treated as further processing of that same basis."
+      }
+    ],
+    "standards_alignment": [
+      {
+        "standard": "ICO PETs Guidance 2023",
+        "alignment_level": "partial",
+        "notes": "Guidance is written primarily around modern PETs (DP, MPC, synthetic data); its treatment of classical SDC as a PET-adjacent technique is limited, which this card's authors note as a gap in the guidance rather than in this deployment."
+      }
+    ]
+  },
+  "tooling_candidates": [
+    {
+      "name": "sdcTable",
+      "url": "https://cran.r-project.org/package=sdcTable",
+      "primitive_ids": [
+        "SDC"
+      ],
+      "maturity": "production",
+      "notes": "R package for tabular statistical disclosure control (primary/secondary cell suppression), maintained by the sdcTools project originating at Statistics Austria."
+    },
+    {
+      "name": "sdcMicro",
+      "url": "https://cran.r-project.org/package=sdcMicro",
+      "primitive_ids": [
+        "SDC"
+      ],
+      "maturity": "production",
+      "notes": "Companion R package for microdata-level disclosure control (generalisation, local suppression, risk measures); used here for the underlying validation-cohort extract before tabulation."
+    },
+    {
+      "name": "τ-ARGUS",
+      "url": "https://research.cbs.nl/casc/tau.htm",
+      "primitive_ids": [
+        "SDC"
+      ],
+      "maturity": "production",
+      "notes": "Statistics Netherlands' tabular disclosure control software; the long-standing reference implementation for cell-suppression pattern computation in official statistics."
+    }
+  ],
+  "residual_risks": [
+    {
+      "risk": "Classical frequency-rule and generalisation thresholds were designed for raw respondent tabulations; whether they bound disclosure risk correctly when the released table is itself derived from a trained AI model's predictions has not been separately validated for this deployment",
+      "severity": "medium",
+      "mitigation_path": "Complete the model-derived disclosure re-validation artefact (SDC-005); consider whether membership-inference-style testing against the calibration table itself is warranted, not just against the underlying model"
+    },
+    {
+      "risk": "No automated cross-release margin-consistency check: a party combining this quarter's release with a prior quarter's release (or a related trust statistic) may recover a suppressed cell more precisely than either release alone reveals",
+      "severity": "low",
+      "mitigation_path": "Introduce an automated cross-release consistency check to the quarterly SDC re-run, informed by Cox (1980)'s treatment of linked-table suppression"
+    },
+    {
+      "risk": "SDC provides no composable, re-derivable privacy accounting the way a DP accountant does — cumulative disclosure risk across the ongoing quarterly release programme is reassessed by hand each quarter rather than tracked against a budget",
+      "severity": "medium",
+      "mitigation_path": "Document the disclosure-risk evaluation explicitly for each release rather than relying on a one-time policy sign-off; revisit whether a DP-C-based alternative (P-07 pattern) becomes viable as validation-cohort sizes grow"
+    }
+  ],
+  "utility_evidence": {
+    "primary_metric": "table cells suppressed or coarsened beyond the base generalisation hierarchy",
+    "baseline_value": 0,
+    "pet_value": 14,
+    "unit": "% of table cells",
+    "notes": "14% of cells suppressed in the most recent quarterly release, concentrated in rare ethnicity x diagnosis-category combinations. The clinical-safety oversight board accepted this utility loss as sufficient for its primary review purpose (detecting large subgroup miscalibration), while noting it limits the table's power to detect small-subgroup effects."
+  },
+  "change_log": [
+    {
+      "date": "2026-09-02",
+      "change": "Initial card created as YAPS example — SDC + TRE (P-09) pattern, healthcare AI subgroup-calibration use case",
+      "author": "Privacy Explorer"
+    }
+  ],
+  "exposure_problem_refs": [
+    "EP-01",
+    "EP-09",
+    "EP-06"
+  ],
+  "jurisdictional_context": {
+    "data_subjects": [
+      "UK"
+    ],
+    "controllers": [
+      "UK"
+    ],
+    "operators": [
+      "UK"
+    ],
+    "cross_border_mechanism": null,
+    "notes": "Single-jurisdiction UK deployment; no cross-border data flow."
+  },
+  "stepwise_chain": [
+    {
+      "step": 0,
+      "name": "Baseline — completely private",
+      "purpose": "Starting state. Validation-cohort patient records and model predictions sit within the trust's Secure Data Environment; no external release.",
+      "exposure_problem_ref": "baseline",
+      "pet_added": "none",
+      "trust_assumption_added": "trivial — the trust trusts itself",
+      "assurance_anchor": "n/a",
+      "residual_risk": "Trivially private; trivially useless for external clinical-safety oversight of the deployed model."
+    },
+    {
+      "step": 1,
+      "name": "Produce a disclosure-controlled subgroup calibration table",
+      "purpose": "Produce the aggregate subgroup calibration table needed for external clinical-safety oversight of the deployed AI model, without releasing patient-level records.",
+      "exposure_problem_ref": "EP-01",
+      "pet_added": "SDC",
+      "trust_assumption_added": "trusted curator (the trust) applies deterministic coarsening and suppression rules before any external party sees the table",
+      "assurance_anchor": "frequency-rule threshold; coarsening/generalisation hierarchy; primary and secondary suppression pattern",
+      "residual_risk": "No portable privacy guarantee; a motivated intruder combining this release with others sharing margins may still narrow a suppressed cell (Cox 1980); disclosure risk from the table being model-derived rather than a raw tabulation has not yet been separately evaluated (see SDC-005)."
+    },
+    {
+      "step": 2,
+      "name": "Govern release to the external oversight body",
+      "purpose": "Release the coarsened and suppressed table to the external clinical-safety oversight body under a governed, auditable process.",
+      "exposure_problem_ref": "EP-06",
+      "pet_added": "TRE",
+      "trust_assumption_added": "institutional trust in the trust's information-governance output-checking process (Five Safes)",
+      "assurance_anchor": "output-clearance workflow and decision log; data access agreement with the oversight body",
+      "residual_risk": "Output checking is only as good as the reviewer's ability to spot cross-release recovery risk; no automated cross-release margin-consistency check currently runs (see residual_risks)."
+    }
+  ]
+}

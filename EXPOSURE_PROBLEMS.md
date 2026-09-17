@@ -26,15 +26,15 @@ Each entry has the same shape:
 
 | EP | Exposure problem | Primary responding PETs | Dominant assurance anchor |
 |---|---|---|---|
-| **EP-01** | Aggregated outputs may reveal individual records | `DP-C`, `P-07`, `P-08` | Privacy accountant + parameter manifest + μ-DP / attack-rate target (schema 1.2 `risk_calibration`) |
+| **EP-01** | Aggregated outputs may reveal individual records | `DP-C`, `P-07`, `P-08`, `SDC` | Privacy accountant + parameter manifest + μ-DP / attack-rate target (schema 1.2 `risk_calibration`) |
 | **EP-02** | Data cannot leave its source for joint computation | `MPC`, `HE`, `FL`, `P-02` | Adversary-model declaration + protocol spec |
 | **EP-03** | Computation must happen inside an untrusted environment | `TEE`, `HE`, `P-04` | Attestation + side-channel mitigation |
 | **EP-04** | Distributed model training where updates may leak training data | `P-01`, `P-02`, `P-03`, `S-01`, `S-03` | Secure-aggregation spec + privacy accountant |
-| **EP-05** | Need to share or republish a dataset-shaped artefact | `SYN`, `P-08`, `S-04` | Disclosure-risk evaluation + utility benchmark |
-| **EP-06** | Repeated, governed access to sensitive data for research | `TRE`, `P-07`, `S-02` | Output-clearance log + accreditation records |
+| **EP-05** | Need to share or republish a dataset-shaped artefact | `SYN`, `P-08`, `S-04`, `P-10` | Disclosure-risk evaluation + utility benchmark |
+| **EP-06** | Repeated, governed access to sensitive data for research | `TRE`, `P-07`, `S-02`, `P-09`, `P-10` | Output-clearance log + accreditation records |
 | **EP-07** | Prove a property without revealing the underlying data | `ZKP`, `P-06` | Circuit definition + verification parameters |
 | **EP-08** | Cumulative privacy loss across multiple releases | `DP-C`, `DP-L` | Privacy accountant with composition theorem named + μ-DP / attack-rate target (schema 1.2 `risk_calibration`) |
-| **EP-09** | Re-identification from quasi-identifiers in low-dimensional release | `DP-C`, `SYN`, `TRE` | Singling-out test + motivated-intruder simulation |
+| **EP-09** | Re-identification from quasi-identifiers in low-dimensional release | `DP-C`, `SYN`, `TRE`, `SDC` | Singling-out test + motivated-intruder simulation |
 | **EP-10** | Lifecycle controls — withdrawal, retraining, deprecated artefacts | `SYN`, machine unlearning | Change log linked to model versions |
 | **EP-11** | Cross-jurisdictional analytics with conflicting legal regimes | `FL`, `P-04`, `S-01` | Jurisdictional applicability declaration + DPIA per jurisdiction |
 
@@ -67,7 +67,7 @@ This shift addresses one of the most common critiques of combination-first frame
 
 This index is **complementary** to the survey paper. The survey paper provides the conceptual basis — algorithmic vs architectural typologies, the assurance-gap argument, the comparative tables in §4 — and remains the authoritative reference for the technical claims. T0 operationalises a specific use of the survey's logic: for a practitioner facing a concrete exposure problem, which responses are evidenced and what assurance bundle is required?
 
-The survey itself does not need a T0 section to be coherent. The recommendation (in [MANUSCRIPT_SUGGESTIONS.md](MANUSCRIPT_SUGGESTIONS.md)) is that the survey mention the concept of exposure-problem-led PET selection briefly in §5 (Cross-Cutting Limitations and Potential Future Directions) and point readers to this repository for the operational form.
+The survey itself does not need a T0 section to be coherent. The recommendation is that the survey mention the concept of exposure-problem-led PET selection briefly in §5 (Cross-Cutting Limitations and Potential Future Directions) and point readers to this repository for the operational form.
 
 ---
 

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/privacy-explorer/yaps/schemas/privacy_card.schema.json",
   "title": "Privacy Card",
-  "description": "A structured artefact capturing the privacy architecture of a PET-protected system, dataset, model, pipeline, or query service. All explorer cross-references (primitive_id, pairing_ref, stack_ref, sector_ref) must match IDs in the T1–T4 tables.",
+  "description": "A structured artefact capturing the privacy architecture of a PET-protected system, dataset, model, pipeline, or query service. Schema 2.0 (breaking change from 1.2) adds: (i) structured evidence references with explicit evidence_class enum [Duddu et al. CODASPY 2025, §3; IBM Atlas arXiv:2502.19567, §4 — the verifiable-card and in-toto provenance lineage]; (ii) device_class on PET components for CPS/IoT deployments [Mo et al. MobiSys 2020 §5; Gupta et al. arXiv:2511.00037 §4]; (iii) trust_zone on stepwise steps [aligned with NIST 1500-201 CPS reference architecture]; (iv) cps_subject_type on deployment context; (v) explicit threat_profile in risk_calibration [Boenisch et al. EuroS&P 2023 §5 — the honest-but-curious to malicious-server shift changes ε* by ≈2×]; (vi) refactored risk_calibration with three first-class ε quantities — design target, accountant, empirical-audit lower bound [Steinke, Nasr, Jagielski NeurIPS 2023; Kulynych et al. NeurIPS 2024 §3]. All explorer cross-references (primitive_id, pairing_ref, stack_ref, sector_ref) must match IDs in the T1–T4 tables. See MIGRATION_NOTES.md for the 1.2 → 2.0 diff.",
   "type": "object",
   "required": [
     "card_id",
@@ -16,6 +16,108 @@
     "deployment_context"
   ],
   "additionalProperties": false,
+
+  "$defs": {
+
+    "evidence_reference": {
+      "type": "object",
+      "description": "A reference to an evidence artefact (result record, attestation, audit log, signed receipt). Made structured in 2.0 so the evidence_class is always declared. Evidence-class taxonomy follows the verifiable-card lineage [Duddu et al. CODASPY 2025 (Laminator) §3; IBM Atlas arXiv:2502.19567 §4; Guo et al. arXiv:2412.10537 (VerifiableFL) §3].",
+      "required": ["location", "evidence_class"],
+      "additionalProperties": false,
+      "properties": {
+        "location": {
+          "type": "string",
+          "description": "Path, URI, or content-addressable identifier pointing to the evidence artefact.",
+          "examples": [
+            "results/sq1/mia_per_record__B-LiRA__bloodmnist.json",
+            "https://attest.example.org/round/12/aws-nitro.json",
+            "sha256:5e884898da28047151d0e56f8dc62927..."
+          ]
+        },
+        "evidence_class": {
+          "type": "string",
+          "enum": [
+            "reproducible-record",
+            "signed-record",
+            "countersigned-record",
+            "hash-chain-committed",
+            "notarised"
+          ],
+          "description": "What kind of evidence this is. The hierarchy is monotonic in tamper-resistance: (a) `reproducible-record` — the metric is reproducible from the audit-trailed config + seed + dataset hash, but the record itself is not cryptographically signed; sufficient for internal reproducibility, insufficient as dispute evidence (this is the typical state of an ML result record committed to a repo). (b) `signed-record` — the record (or its hash) is signed by the producing party with a verifiable key (e.g. JWS over a Solid consent receipt via WebID-DPoP), giving non-repudiation against the producer alone. (c) `countersigned-record` — additionally signed by a second party with an independent key (a witness, audit body, or institutional counterparty), giving non-repudiation across two trust domains. (d) `hash-chain-committed` — committed to an append-only log with periodic external anchors (in-toto-style, Atlas 2025 §4). (e) `notarised` — additionally anchored to a public ledger or notary service offering third-party attestation of time-of-commit. Workshop attendees should always be able to answer: which evidence-class does each `evidence_ref` warrant, given the dispute scenario it would be invoked in? (see workshops/W2-card-construction.md)."
+        },
+        "produced_by": {
+          "type": "string",
+          "description": "Identity (WebID, DID, or institutional identifier) of the party producing this evidence. Required for evidence_class ∈ {signed-record, countersigned-record, hash-chain-committed, notarised}."
+        },
+        "countersigned_by": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Identities of additional signing parties. Required for evidence_class ∈ {countersigned-record, notarised}."
+        },
+        "anchor_log": {
+          "type": "string",
+          "description": "URI of the append-only log or notary service this evidence is anchored to. Required for evidence_class ∈ {hash-chain-committed, notarised}."
+        },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "device_class": {
+      "type": "string",
+      "enum": [
+        "hospital-server",
+        "edge-gateway",
+        "wearable-simulator",
+        "mobile-client",
+        "aggregator",
+        "cloud-tee",
+        "hardware-tee",
+        "browser-client",
+        "unspecified"
+      ],
+      "description": "Device class for CPS/IoT deployments. Two FL deployments with identical (ε, δ) can offer materially different actual privacy depending on which devices participated and what each one's trust profile is. Vocabulary motivated by Gupta et al. arXiv:2511.00037 §4 (FL framework benchmarking across device assumptions) and Mo et al. MobiSys 2020 §5 (DarkneTZ — discriminating between TEE classes at the edge)."
+    },
+
+    "trust_zone": {
+      "type": "string",
+      "enum": [
+        "perception",
+        "network",
+        "application",
+        "platform",
+        "enclave",
+        "off-platform"
+      ],
+      "description": "Trust zone the step operates in. Aligned with the NIST 1500-201 CPS reference architecture layers. `enclave` denotes operation inside a TEE substrate; `off-platform` denotes anything terminating outside the deployment's trust boundary (e.g. a third-party witness service)."
+    },
+
+    "threat_profile": {
+      "type": "string",
+      "enum": [
+        "honest-but-curious-server",
+        "malicious-server",
+        "malicious-client",
+        "malicious-coalition",
+        "external-only"
+      ],
+      "description": "Adversary model the deployment is calibrated against. The honest-but-curious / malicious-server distinction is load-bearing: Boenisch et al. EuroS&P 2023 §5 show that the operationally meaningful ε* shifts by ≈2× when moving from honest-but-curious to malicious-server. Required in risk_calibration because every empirical attack-rate quoted on a card is calibrated against exactly one profile, and conflating them is the most common over-reading of FL privacy claims [Carlini et al. S&P 2022 §6; Boenisch et al. EuroS&P 2023 §5]."
+    },
+
+    "cps_subject_type": {
+      "type": "string",
+      "enum": [
+        "patient",
+        "clinician",
+        "vehicle-owner",
+        "smart-home-resident",
+        "energy-prosumer",
+        "industrial-operator",
+        "generic-data-subject"
+      ],
+      "description": "The CPS/IoT subject role on whose behalf the privacy claim is being made. Affects the natural unit of disclosure (record vs subject vs cohort) and therefore which MIA variant is the operationally relevant one [Suri et al. PoPETs 2023 §3 — subject-level MIA in cross-silo FL]."
+    }
+  },
+
   "properties": {
 
     "card_id": {
@@ -26,8 +128,8 @@
 
     "schema_version": {
       "type": "string",
-      "enum": ["1.0", "1.1", "1.2"],
-      "description": "Schema version this card was written against. 1.2 adds the optional `risk_calibration` block for operational DP reporting (μ-DP, attack-rate target, regret, trade-off curve). 1.1 added stepwise_chain, exposure_problem_refs, jurisdictional_context, and DP-L/DP-C primitive ids. 1.0 cards remain valid."
+      "enum": ["1.0", "1.1", "1.2", "2.0"],
+      "description": "Schema version this card was written against. 2.0 is a breaking change from 1.2; see MIGRATION_NOTES.md. 1.2 added the optional `risk_calibration` block for operational DP reporting. 1.1 added stepwise_chain, exposure_problem_refs, jurisdictional_context. 1.0 cards remain valid under their original schema but should be migrated for new work."
     },
 
     "title": {
@@ -71,12 +173,12 @@
       "properties": {
         "pairing_ref": {
           "type": "string",
-          "description": "T2 Pair ID (e.g. P-01). Use if this card represents a two-PET combination.",
+          "description": "T2 Pair ID (e.g. P-01).",
           "pattern": "^P-[0-9]{2}$"
         },
         "stack_ref": {
           "type": "string",
-          "description": "T3 Stack ID (e.g. S-01). Use if this card represents a three-PET stack.",
+          "description": "T3 Stack ID (e.g. S-01).",
           "pattern": "^S-[0-9]{2}$"
         },
         "custom": {
@@ -102,22 +204,21 @@
         "properties": {
           "primitive_id": {
             "type": "string",
-            "description": "T1 primitive ID. DP is retained as a family pointer; new cards should prefer DP-L (local) or DP-C (central) for explicit trust-model declaration.",
-            "enum": ["DP", "DP-L", "DP-C", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE"]
+            "description": "T1 primitive ID. DP retained as family pointer; prefer DP-L or DP-C for explicit trust model. SDC (classical statistical disclosure control — coarsening & suppression) is a legacy technique, not a modern PET; it is included in this enum for cards that need to model it, but see GLOSSARY.md §4 and data/primitives.yaml for why it does not fit the 'algorithmic PET' definition cleanly.",
+            "enum": ["DP", "DP-L", "DP-C", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE", "SDC"]
           },
           "role": {
             "type": "string",
-            "description": "What this primitive contributes to the overall architecture.",
-            "examples": [
-              "local data retention — raw data never leaves client devices",
-              "hardware isolation of aggregation server",
-              "formal output disclosure bound"
-            ]
+            "description": "What this primitive contributes to the overall architecture."
           },
           "implementation_status": {
             "type": "string",
             "enum": ["planned", "in-development", "deployed", "deprecated"],
             "description": "Current implementation status of this component."
+          },
+          "device_class": {
+            "$ref": "#/$defs/device_class",
+            "description": "Device class hosting this PET component, where applicable. New in 2.0."
           },
           "tooling": {
             "type": "array",
@@ -130,21 +231,22 @@
                 "name": { "type": "string" },
                 "version": { "type": "string" },
                 "url": { "type": "string", "format": "uri" },
-                "licence": { "type": "string" }
+                "licence": { "type": "string" },
+                "notes": { "type": "string" }
               }
             }
           },
           "parameters": {
             "type": "object",
-            "description": "Key configuration parameters for this primitive. Schema is open-ended; document what is material for assurance.",
-            "examples": [
-              { "epsilon": 1.0, "delta": 1e-5, "noise_mechanism": "Gaussian", "clipping_norm": 1.0 },
-              { "vendor": "AWS Nitro Enclaves", "enclave_measurement": "sha384:abc123...", "memory_mb": 4096 }
-            ]
+            "description": "Key configuration parameters for this primitive. Schema is open-ended; document what is material for assurance."
           },
           "parameter_notes": {
             "type": "string",
             "description": "Narrative on parameter choices, constraints, or known governance gaps."
+          },
+          "attestation_evidence": {
+            "$ref": "#/$defs/evidence_reference",
+            "description": "Attestation receipt for this PET component, where applicable (e.g. TEE attestation document). Required for primitive_id=TEE in schema 2.0 if implementation_status=deployed; see CPSDEV-ATTEST-001 rule."
           }
         }
       }
@@ -168,22 +270,10 @@
             "required": ["actor", "capability", "mitigated_by"],
             "additionalProperties": false,
             "properties": {
-              "actor": {
-                "type": "string",
-                "examples": ["curious aggregation server", "cloud infrastructure operator", "external analyst with auxiliary data"]
-              },
-              "capability": {
-                "type": "string",
-                "description": "What this actor can observe or do."
-              },
-              "mitigated_by": {
-                "type": "string",
-                "description": "Which PET component(s) address this threat."
-              },
-              "residual_risk": {
-                "type": "string",
-                "description": "What remains after mitigation."
-              }
+              "actor": { "type": "string" },
+              "capability": { "type": "string" },
+              "mitigated_by": { "type": "string" },
+              "residual_risk": { "type": "string" }
             }
           }
         },
@@ -197,12 +287,12 @@
 
     "assurance_targets": {
       "type": "object",
-      "description": "The assurance artefacts this deployment commits to producing. Each field maps to the artefact categories in T1–T3.",
+      "description": "The assurance artefacts this deployment commits to producing.",
       "additionalProperties": false,
       "properties": {
         "required_artefacts": {
           "type": "array",
-          "description": "Artefacts that must exist for this architecture to be considered deployment-ready.",
+          "description": "Artefacts that must exist for this architecture to be considered deployment-ready. In 2.0, the `evidence` block is structured (uses evidence_reference) — `location` alone is insufficient because the reviewer needs to know what kind of evidence is on offer.",
           "items": {
             "type": "object",
             "required": ["artefact", "status"],
@@ -213,9 +303,9 @@
                 "type": "string",
                 "enum": ["exists", "planned", "not-applicable", "missing"]
               },
-              "location": {
-                "type": "string",
-                "description": "Where this artefact can be found (URL, file path, or reference)."
+              "evidence": {
+                "$ref": "#/$defs/evidence_reference",
+                "description": "Structured evidence reference. Required if status=exists. New in 2.0; replaces the bare `location` string from 1.2."
               },
               "notes": { "type": "string" }
             }
@@ -241,37 +331,20 @@
       "properties": {
         "output_control": {
           "type": "string",
-          "enum": ["human-review", "automated-statistical", "both", "none", "planned"],
-          "description": "How outputs are checked before release."
+          "enum": ["human-review", "automated-statistical", "both", "none", "planned"]
         },
-        "access_control": {
-          "type": "string",
-          "description": "How access to the system or data is controlled."
-        },
-        "change_control": {
-          "type": "string",
-          "description": "How changes to the architecture are reviewed and approved."
-        },
-        "audit_log": {
-          "type": "boolean",
-          "description": "Whether an audit log of access and release decisions is maintained."
-        },
-        "dpia_reference": {
-          "type": "string",
-          "description": "Reference to a completed Data Protection Impact Assessment, if applicable."
-        },
+        "access_control": { "type": "string" },
+        "change_control": { "type": "string" },
+        "audit_log": { "type": "boolean" },
+        "dpia_reference": { "type": "string" },
         "frameworks_applied": {
           "type": "array",
-          "description": "Governance frameworks this architecture claims alignment with.",
           "items": {
             "type": "object",
             "required": ["framework", "alignment_level"],
             "additionalProperties": false,
             "properties": {
-              "framework": {
-                "type": "string",
-                "examples": ["Five Safes", "NIST Privacy Framework 1.0", "ICO Anonymisation Code", "ISO/IEC 27701"]
-              },
+              "framework": { "type": "string" },
               "alignment_level": {
                 "type": "string",
                 "enum": ["full", "partial", "aspirational", "not-assessed"]
@@ -296,19 +369,20 @@
         },
         "sub_sector": {
           "type": "string",
-          "description": "More specific sector context if the T4 entry is too coarse.",
           "examples": ["cross-institutional oncology research", "consumer telemetry", "credit scoring"]
+        },
+        "cps_subject_type": {
+          "$ref": "#/$defs/cps_subject_type",
+          "description": "The CPS/IoT subject role this card's privacy claims protect. New in 2.0. Required for cards in CPS/IoT settings; affects the natural unit of disclosure and therefore which MIA variant is operationally relevant [Suri et al. PoPETs 2023 §3]."
         },
         "data_subjects_jurisdiction": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Jurisdictions whose data protection law applies.",
-          "examples": [["UK", "EU"], ["US-HIPAA"], ["UK", "EU", "US"]]
+          "description": "Jurisdictions whose data protection law applies."
         },
         "scale": {
           "type": "string",
-          "enum": ["pilot", "limited-production", "production", "platform-scale"],
-          "description": "Scale of deployment."
+          "enum": ["pilot", "limited-production", "production", "platform-scale"]
         }
       }
     },
@@ -325,16 +399,9 @@
             "required": ["regulation", "jurisdiction"],
             "additionalProperties": false,
             "properties": {
-              "regulation": {
-                "type": "string",
-                "examples": ["UK GDPR", "EU GDPR", "HIPAA", "CCPA", "NIS2"]
-              },
+              "regulation": { "type": "string" },
               "jurisdiction": { "type": "string" },
-              "relevant_articles": {
-                "type": "array",
-                "items": { "type": "string" },
-                "examples": [["Art. 25 (data protection by design)", "Art. 35 (DPIA)"]]
-              },
+              "relevant_articles": { "type": "array", "items": { "type": "string" } },
               "alignment_status": {
                 "type": "string",
                 "enum": ["aligned", "partial", "gap-identified", "not-assessed"]
@@ -350,10 +417,7 @@
             "required": ["standard"],
             "additionalProperties": false,
             "properties": {
-              "standard": {
-                "type": "string",
-                "examples": ["NIST SP 800-226", "ISO/IEC 20889:2018", "ICO PETs Guidance 2023"]
-              },
+              "standard": { "type": "string" },
               "alignment_level": {
                 "type": "string",
                 "enum": ["full", "partial", "aspirational", "not-assessed"]
@@ -367,12 +431,12 @@
 
     "data_profile_ref": {
       "type": "string",
-      "description": "Path or URI to a Data Profile document (data_profile.schema.json) associated with this card."
+      "description": "Path or URI to a Data Profile document associated with this card."
     },
 
     "tooling_candidates": {
       "type": "array",
-      "description": "Open-source or commercial tools evaluated or in use for this architecture. Community contributions welcome.",
+      "description": "Open-source or commercial tools evaluated or in use for this architecture.",
       "items": {
         "type": "object",
         "required": ["name", "primitive_ids"],
@@ -382,8 +446,7 @@
           "url": { "type": "string", "format": "uri" },
           "primitive_ids": {
             "type": "array",
-            "items": { "type": "string" },
-            "description": "Which T1 primitives this tool implements or supports."
+            "items": { "type": "string" }
           },
           "maturity": {
             "type": "string",
@@ -396,7 +459,7 @@
 
     "residual_risks": {
       "type": "array",
-      "description": "Known risks not addressed by the current architecture. Each entry should be actionable.",
+      "description": "Known risks not addressed by the current architecture.",
       "items": {
         "type": "object",
         "required": ["risk", "severity"],
@@ -407,10 +470,7 @@
             "type": "string",
             "enum": ["low", "medium", "high", "critical"]
           },
-          "mitigation_path": {
-            "type": "string",
-            "description": "What would reduce this risk."
-          }
+          "mitigation_path": { "type": "string" }
         }
       }
     },
@@ -430,7 +490,6 @@
 
     "change_log": {
       "type": "array",
-      "description": "Significant changes to this card over time.",
       "items": {
         "type": "object",
         "required": ["date", "change"],
@@ -445,112 +504,171 @@
 
     "exposure_problem_refs": {
       "type": "array",
-      "description": "T0 exposure problem identifiers this card is responding to. See data/exposure_problems.yaml.",
       "items": {
         "type": "string",
         "pattern": "^EP-[0-9]{2}$"
-      },
-      "examples": [["EP-04", "EP-03", "EP-11"]]
+      }
     },
 
     "jurisdictional_context": {
       "type": "object",
-      "description": "Jurisdictional declarations for cross-jurisdictional deployments. Each role can sit in one or more jurisdictions; the framework does not assume they overlap.",
+      "description": "Jurisdictional declarations for cross-jurisdictional deployments.",
       "additionalProperties": false,
       "properties": {
-        "data_subjects": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Jurisdictions where data subjects reside. Determines which data-protection regimes apply to the subjects.",
-          "examples": [["UK", "EU"], ["US-state:CA"]]
-        },
-        "controllers": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Jurisdictions of data controller(s)."
-        },
-        "operators": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Jurisdictions of infrastructure operator(s) (e.g. cloud regions)."
-        },
-        "cross_border_mechanism": {
-          "type": "string",
-          "description": "Mechanism justifying cross-border data flow if any (e.g. SCCs, adequacy decision, transfer impact assessment).",
-          "examples": ["UK IDTA", "EU SCCs (2021/914)", "adequacy: UK-EU", "section 251 NHS Act 2006"]
-        },
+        "data_subjects": { "type": "array", "items": { "type": "string" } },
+        "controllers": { "type": "array", "items": { "type": "string" } },
+        "operators": { "type": "array", "items": { "type": "string" } },
+        "cross_border_mechanism": { "type": ["string", "null"] },
         "notes": { "type": "string" }
       }
     },
 
     "risk_calibration": {
       "type": "object",
-      "description": "Optional (schema 1.2). Operational reporting of a DP claim alongside the (ε, δ) stored on pet_components[].parameters. Motivated by Desfontaines (2023) and the interpretable-dp.org toolchain: a single ε hides the privacy trade-off; μ-DP, a stated attack-rate target, and the FPR/FNR trade-off curve give reviewers an operationally legible summary. This block does not replace (ε, δ) — it complements them.",
+      "description": "Operational reporting of the deployment's DP claim. Refactored in 2.0 to make the three operationally distinct ε quantities first-class: design target (what the deployment promises), accountant (what composition bounds), empirical-audit (what an audit can falsify). Reporting only one mis-leads reviewers about which assurance is actually on offer [Desfontaines blog 2023; Kulynych et al. NeurIPS 2024 §3 — the f-DP-to-attack-rate mapping the target_advantage field instantiates; Steinke, Nasr, Jagielski NeurIPS 2023 Outstanding Paper — one-run empirical lower bound]. The `threat_profile` is now required because every quantity below is calibrated against exactly one profile, and conflating profiles is the most common over-reading [Boenisch et al. EuroS&P 2023 §5].",
+      "required": ["threat_profile"],
       "additionalProperties": false,
       "properties": {
-        "mu_dp": {
-          "type": "number",
-          "minimum": 0,
-          "description": "Gaussian-DP μ parameter (Dong, Roth & Su 2022). Single-number summary alternative to (ε, δ)."
+
+        "threat_profile": {
+          "$ref": "#/$defs/threat_profile",
+          "description": "Adversary model these quantities are calibrated against."
         },
-        "attack_target": {
+
+        "design_target": {
           "type": "object",
+          "description": "What the deployment promises. The aspirational privacy claim before any empirical measurement.",
           "additionalProperties": false,
-          "description": "Operational framing: name the attack the DP claim is targeting and the rate at which it is bounded.",
           "properties": {
-            "attack": {
-              "type": "string",
-              "enum": ["MIA", "reconstruction", "singling-out", "linkage"]
-            },
-            "target_advantage": {
-              "type": "number",
-              "description": "Bound on adversary advantage relative to the chance baseline. Example: 'TPR at FPR=0.001 ≤ 0.01' → target_advantage = 0.009."
-            },
-            "target_fpr": {
+            "epsilon": {
               "type": "number",
               "minimum": 0,
-              "maximum": 1
+              "description": "Design-target ε."
             },
-            "target_fnr": {
+            "delta": {
               "type": "number",
               "minimum": 0,
-              "maximum": 1
+              "maximum": 1,
+              "description": "δ."
             },
-            "measured_advantage": {
+            "mu_dp": {
               "type": "number",
-              "description": "Empirically measured advantage (e.g. worst-record TPR@FPR from a privacy-eval sweep). Populated by ingesting privacy-eval result records."
+              "minimum": 0,
+              "description": "Gaussian-DP μ parameter [Dong, Roth, Su JRSS-B 2022]."
             },
-            "evidence_ref": {
-              "type": "string",
-              "description": "Path or URI to the empirical record substantiating measured_advantage (e.g. privacy-eval/results/mia/per_record/.../*.json)."
-            }
+            "attack_target": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "attack": {
+                  "type": "string",
+                  "enum": ["MIA-per-record", "MIA-per-subject", "reconstruction", "singling-out", "linkage"]
+                },
+                "target_advantage": { "type": "number" },
+                "target_fpr": { "type": "number", "minimum": 0, "maximum": 1 },
+                "target_fnr": { "type": "number", "minimum": 0, "maximum": 1 }
+              },
+              "description": "Stated attack the design target is calibrated against [Kulynych et al. NeurIPS 2024]."
+            },
+            "notes": { "type": "string" }
           }
         },
-        "conversion_regret": {
-          "type": "number",
-          "minimum": 0,
-          "description": "How lossy the μ-DP single-parameter summary is at the relevant operating point. Per Desfontaines, regret values above ~0.01 indicate the summary is materially lossy and the trade-off curve should be reported instead."
+
+        "accountant": {
+          "type": "object",
+          "description": "What composition bounds. Output of the DP accountant under the configured (σ, T, q, δ).",
+          "additionalProperties": false,
+          "properties": {
+            "rdp_envelope": {
+              "type": "number",
+              "minimum": 0,
+              "description": "ε under a single-α Rényi-DP envelope [Mironov CSF 2017]."
+            },
+            "prv": {
+              "type": "number",
+              "minimum": 0,
+              "description": "ε under the PRV accountant [Gopi, Lee, Wutschitz NeurIPS 2021] — the tighter modern accountant for FL composition."
+            },
+            "mu_dp": {
+              "type": "number",
+              "minimum": 0,
+              "description": "μ-DP composition result [Dong, Roth, Su JRSS-B 2022]."
+            },
+            "delta": { "type": "number", "minimum": 0, "maximum": 1 },
+            "evidence": {
+              "$ref": "#/$defs/evidence_reference",
+              "description": "Pointer to the accountant log establishing these values."
+            },
+            "notes": { "type": "string" }
+          }
         },
-        "trade_off_curve_ref": {
-          "type": "string",
-          "description": "Path or URI to the FPR-vs-FNR curve data or plot — produced for example by gdpnum.plot or by a privacy-eval ROC sweep."
+
+        "empirical_audit": {
+          "type": "object",
+          "description": "What an audit can falsify. The empirical ε lower bound from canary-based DP auditing [Jagielski, Ullman, Oprea NeurIPS 2020; Nasr et al. USENIX Security 2023; Steinke, Nasr, Jagielski NeurIPS 2023 Outstanding Paper — one-run auditing recommended].",
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "type": "string",
+              "enum": ["canary-multi-run", "canary-one-run", "canife", "subject-canary", "none"],
+              "description": "Auditing technique. 'canife' = FL-specific crafted canaries [Maddock et al. ICLR 2023]. 'canary-one-run' = single-training-run multi-canary audit [Steinke, Nasr, Jagielski NeurIPS 2023]."
+            },
+            "epsilon_lower_bound": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Clopper-Pearson lower bound on empirical ε. Zero means the audit at this scale cannot falsify the design target."
+            },
+            "delta": { "type": "number", "minimum": 0, "maximum": 1 },
+            "n_canaries": { "type": "integer", "minimum": 1 },
+            "evidence": {
+              "$ref": "#/$defs/evidence_reference",
+              "description": "Pointer to the canary-audit result record."
+            },
+            "notes": { "type": "string" }
+          }
         },
+
+        "measured_advantage": {
+          "type": "object",
+          "description": "Empirically measured adversary advantage under attack(s) actually mounted against the released model.",
+          "additionalProperties": false,
+          "properties": {
+            "attack_method": {
+              "type": "string",
+              "enum": ["LiRA", "RMIA", "subject-MIA", "gradient-inversion", "compromised-edge", "other"]
+            },
+            "value": { "type": "number" },
+            "ci_low": { "type": "number" },
+            "ci_high": { "type": "number" },
+            "n_shadows": { "type": "integer", "minimum": 0 },
+            "n_targets": { "type": "integer", "minimum": 0 },
+            "evidence": { "$ref": "#/$defs/evidence_reference" },
+            "notes": { "type": "string" }
+          }
+        },
+
+        "trade_off_curve": {
+          "$ref": "#/$defs/evidence_reference",
+          "description": "Reference to the FPR-vs-FNR curve data or plot for this calibration."
+        },
+
         "operational_interpretation": {
           "type": "string",
-          "description": "One-line narrative for non-specialist readers: 'MIA against the worst record bounded at TPR=0.025 at FPR=0.001', not 'ε=4'."
+          "description": "One-line narrative for non-specialist readers."
         },
+
         "source_library": {
           "type": "string",
-          "enum": ["gdpnum", "riskcal", "manual", "other"],
-          "description": "Provenance of the μ-DP / regret / curve values."
+          "enum": ["gdpnum", "riskcal", "manual", "other"]
         },
+
         "notes": { "type": "string" }
       }
     },
 
     "stepwise_chain": {
       "type": "array",
-      "description": "Stepwise-from-private construction (see STEPWISE_RISK.md). Each entry records one deviation from the completely-private baseline (step 0). Cards SHOULD declare a chain when the deployment uses more than one PET in sequence; the chain makes the architectural rationale auditable step by step.",
+      "description": "Stepwise-from-private construction (see STEPWISE_RISK.md). Each entry records one deviation from the completely-private baseline (step 0).",
       "items": {
         "type": "object",
         "required": [
@@ -566,55 +684,44 @@
         "properties": {
           "step": {
             "type": "integer",
-            "minimum": 0,
-            "description": "Step number. Step 0 is the completely-private baseline; subsequent steps add PETs."
+            "minimum": 0
           },
-          "name": {
-            "type": "string",
-            "description": "Short label for this step."
-          },
-          "purpose": {
-            "type": "string",
-            "description": "Why this step is needed; what does the deployment require that the previous state did not enable?"
-          },
+          "name": { "type": "string" },
+          "purpose": { "type": "string" },
           "exposure_problem_ref": {
             "type": "string",
-            "pattern": "^EP-[0-9]{2}$|^baseline$",
-            "description": "T0 exposure problem this step introduces or addresses. Use 'baseline' for step 0 only."
+            "pattern": "^EP-[0-9]{2}$|^baseline$"
           },
           "pet_added": {
             "oneOf": [
               {
                 "type": "string",
-                "enum": ["none", "DP", "DP-L", "DP-C", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE"]
+                "enum": ["none", "DP", "DP-L", "DP-C", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE", "SDC"]
               },
               {
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "enum": ["DP", "DP-L", "DP-C", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE"]
+                  "enum": ["DP", "DP-L", "DP-C", "MPC", "HE", "ZKP", "SYN", "FL", "TEE", "TRE", "SDC"]
                 },
                 "minItems": 1
               }
-            ],
-            "description": "PET primitive(s) added in this step. Use 'none' for step 0 (baseline)."
+            ]
           },
-          "trust_assumption_added": {
-            "type": "string",
-            "description": "Trust this step now requires. Use vocabulary from GLOSSARY.md (trusted curator, untrusted curator, honest-but-curious, threshold k-of-n, hardware-anchored, institutional, etc.)."
+          "trust_assumption_added": { "type": "string" },
+          "trust_zone": {
+            "$ref": "#/$defs/trust_zone",
+            "description": "Trust zone this step operates in. New in 2.0."
           },
-          "assurance_anchor": {
-            "type": "string",
-            "description": "The artefact that makes this step's privacy claim credible (attestation, privacy accountant, protocol specification, output-clearance log, etc.)."
+          "assurance_anchor": { "type": "string" },
+          "evidence_anchor": {
+            "$ref": "#/$defs/evidence_reference",
+            "description": "Structured evidence reference backing this step's assurance claim. New in 2.0 (the textual `assurance_anchor` is kept for narrative; this is the machine-checkable pointer)."
           },
-          "residual_risk": {
-            "type": "string",
-            "description": "What remains exposed after this step that subsequent steps may need to address."
-          },
+          "residual_risk": { "type": "string" },
           "notes": { "type": "string" }
         }
       }
     }
-
   }
 }

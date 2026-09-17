@@ -23,7 +23,7 @@
 #   4 = Audit-ready / procurement-ready
 
 schema_version: "1.1"
-last_updated: "2026-05-24"
+last_updated: "2026-09-02"
 glossary_ref: "../GLOSSARY.md"
 
 primitives:
@@ -353,3 +353,107 @@ primitives:
       - "ADR UK (2024) — Output clearance process"
       - "Goldacre Review (2022)"
       - "FiveSafes.org (n.d.)"
+
+  # ----------------------------------------------------------------------
+  # Classical statistical disclosure control.
+  #
+  # Family classification note: SDC is filed under "algorithmic" because it
+  # transforms the released data directly (like DP, SYN) rather than the
+  # compute environment or access regime (like FL, TEE, TRE) — but it does
+  # not meet the Glossary's definition of "algorithmic" cleanly, since it is
+  # not rooted in a formal privacy definition the way DP, MPC, HE, ZKP are.
+  # It is included here, imperfect fit and all, rather than in a third family
+  # invented to make it fit, because the imperfect fit is itself informative:
+  # see trust_model and bottleneck below, and GLOSSARY.md §4.
+  # ----------------------------------------------------------------------
+
+  - id: SDC
+    technique: "Statistical Disclosure Control — coarsening & suppression (classical)"
+    family: algorithmic
+    trust_model: >
+      Trusted curator. The curator applies deterministic, rule-based
+      transformations to a table or microdata extract before release.
+      Coarsening covers two operationally distinct sub-methods that are easy
+      to conflate: category generalisation (grouping ages into ranges,
+      broader geography, top/bottom coding) and rounding, which itself splits
+      into random or conventional rounding (each cell rounded independently —
+      simple, but breaks additivity, so published row/column totals no longer
+      equal the sum of the published cells) and controlled rounding (solved
+      as a constrained optimisation so that rounded cells still sum correctly
+      to rounded margins — the form used in production NSI releases, at
+      higher computational cost). Suppression withholds a cell or record from
+      publication once coarsening is insufficient, gated by named rules
+      rather than a single generic "dominance rule": the frequency rule
+      (suppress any cell below a minimum count, typically 3–10 respondents)
+      and the (n,k)-dominance rule for magnitude data (suppress a cell if the
+      largest n contributors — typically n=1–3 — account for more than k% of
+      the cell total, so a single respondent's value could be closely
+      estimated), sometimes supplemented by the p%-rule (suppress if the
+      second-largest contributor could estimate the largest within p% from
+      the published total). Primary suppression (cells failing a rule
+      directly) is followed by secondary suppression: additional cells
+      suppressed so a primary-suppressed cell cannot be recovered by
+      subtraction from row/column totals or from a linked table sharing the
+      same margins. Unlike DP, none of this constitutes a formal privacy
+      definition or a per-record mathematical bound: disclosure risk is
+      assessed against these named rule-based heuristics and against
+      motivated-intruder / singling-out tests, rather than a portable,
+      third-party re-derivable guarantee. Record swapping is a related
+      classical technique but is treated separately here: it perturbs rather
+      than coarsens or suppresses, and is explicitly grouped with noise-based
+      methods (alongside DP and synthetic data) and prohibited, not mandated,
+      by the 2026 U.S. disclosure-avoidance order that motivates this entry
+      (see maturity_notes).
+    core_artefacts:
+      - coarsening/generalisation hierarchy, and rounding method if used
+        (random/conventional vs. controlled rounding, with the rounding base)
+      - frequency-rule threshold (minimum cell/population size) and, for
+        magnitude tables, the (n,k)-dominance rule or p%-rule parameters
+      - primary and secondary suppression pattern (which cells were
+        suppressed to prevent recovery of primary-suppressed cells by
+        subtraction from margins or from a linked table)
+      - disclosure-risk evaluation (singling-out test, motivated-intruder
+        simulation, minimum risk-set size)
+      - utility-loss report relative to the uncoarsened / unsuppressed table
+    bottleneck: >
+      No portable, re-derivable privacy guarantee — risk is assessed
+      heuristically per release, table shape, and threshold choice, so it
+      does not compose across a programme of releases the way a DP
+      accountant does; cumulative disclosure risk across related tables must
+      be re-assessed by hand each time. Utility loss is uneven and
+      table-shape-dependent (small, high-dimensional tables suppress
+      heavily); optimal secondary-suppression selection is an NP-hard
+      combinatorial problem in general (Cox 1980), so production systems use
+      heuristics rather than provably optimal suppression patterns.
+    maturity_stage: 4
+    maturity_notes: >
+      The longest-standing disclosure-control family in official statistics —
+      it predates every other primitive in this registry by decades, and is
+      audit-ready by construction: a minimum-cell-size rule is simple to
+      state in a release policy and easy for a non-specialist reviewer to
+      inspect, which is a different kind of maturity from a DP accountant's
+      formal composition guarantee, not a stronger one. Newly re-mandated
+      rather than newly matured: the U.S. Department of Commerce's
+      Departmental Administrative Order 216-26 (4 June 2026) requires
+      coarsening — defined by the Census Bureau as "reducing the detail of
+      data, for example grouping ages into ranges or rounding" — as the
+      preferred method, with suppression "permitted only as a last resort",
+      for Census Bureau and BEA statistical products, and explicitly
+      prohibits noise infusion (including differential privacy), synthetic
+      data, and record swapping for the same products. This reverses the
+      2020-cycle move toward DP-C for the same class of release (U.S. Census
+      Bureau 2021) and is the concrete real-world instance motivating this
+      entry (see the position paper, beyond-scalar-epsilon-outline). The UK
+      ONS runs a related but distinct method, cell-key perturbation
+      (small, deterministic per-cell noise keyed to a record key) alongside
+      coarsening/suppression for census tables — closer to a DP-adjacent
+      perturbation method than to this entry, and not currently catalogued
+      separately.
+    key_references:
+      - "Hundepool et al. (2012) — Statistical Disclosure Control (Wiley)"
+      - "Willenborg & de Waal (2001) — Elements of Statistical Disclosure Control"
+      - "Cox (1980) — Suppression methodology and statistical disclosure control"
+      - "U.S. Department of Commerce (2026) — Departmental Administrative Order 216-26: Disclosure Avoidance for Statistical Products"
+      - "U.S. Census Bureau (2026) — Understanding the New Disclosure Avoidance Policy"
+      - "U.S. Census Bureau (2021) — 2020 Disclosure Avoidance System"
+      - "Office for National Statistics (2024) — Statistical Disclosure Control policy"

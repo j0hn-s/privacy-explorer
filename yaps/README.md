@@ -1,6 +1,10 @@
 # YAPS — Yet Another Privacy Sandbox
 
-YAPS is the interactive component of the Privacy Explorer repository. It lets practitioners compose privacy architecture decisions in a structured way, apply rule-based risk profiles to those decisions, and produce governance-ready reports — without requiring any AI or ML tooling.
+YAPS is the framework component of the Privacy Explorer repository: a JSON Schema for *privacy cards* and a deterministic rule engine that evaluates them. It lets practitioners compose privacy architecture decisions in a structured way, apply rule-based risk profiles to those decisions, and produce governance-ready reports — without requiring any AI or ML tooling.
+
+**Schema status: 2.0** (current). See [MIGRATION_NOTES.md](MIGRATION_NOTES.md) for the 1.2 → 2.0 diff and the academic anchors that motivate each new field. 1.0 / 1.1 / 1.2 cards revalidate under 2.0 after the auto-migration recipes in the migration notes.
+
+**Framework vs instance.** YAPS is the *framework* — domain-agnostic, schema-defined, rule-engine-driven. Specific *instances* (worked examples that demonstrate the framework on a concrete deployment) live in companion repositories and are cited here as evidence the framework is exercisable. The current canonical instance is the CPSIoTSec 2026 medical-CPS FL demonstration at [stepwise-privacy-cards](https://github.com/j0hn-s/stepwise-privacy-cards). See [FRAMEWORK_VS_INSTANCE.md](FRAMEWORK_VS_INSTANCE.md) for the explicit distinction.
 
 > **Scope:** YAPS is a conceptual risk assessment tool. It is not a formal verification system, a compliance checklist, or a substitute for legal advice. Risk findings are indicative and are best read alongside the [T0 exposure-problem index](../EXPOSURE_PROBLEMS.md) and the T1–T4 tables in the root [README](../README.md).
 
@@ -25,29 +29,38 @@ The argument from the survey paper applies here: privacy claims become credible 
 
 ```
 yaps/
-├── README.md                   This file
-├── CONTRIBUTING.md             How to add rules, cards, and tool references
+├── README.md                       This file
+├── MIGRATION_NOTES.md              Schema 1.2 → 2.0 diff and rationale; one
+│                                   anchor citation per new field
+├── FRAMEWORK_VS_INSTANCE.md        Explicit YAPS-as-framework /
+│                                   stepwise-privacy-cards-as-instance distinction
+├── CONTRIBUTING.md                 How to add rules, cards, and tool references
 │
 ├── schemas/
-│   ├── privacy_card.schema.json    JSON Schema for Privacy Cards
+│   ├── privacy_card.schema.json    JSON Schema for Privacy Cards (2.0)
 │   └── data_profile.schema.json    JSON Schema for Data Profile (Solid integration)
 │
 ├── rules/
-│   └── rules.yaml              Rule definitions — edit to contest or extend
+│   ├── rules.yaml                  Core rule definitions (IFACE-*, COMP-*,
+│   │                               ASSUR-*, GOV-*, SECTOR-*, REG-*)
+│   └── cps_rules.yaml              CPS/IoT-specific rules (CPSDEV-*) — academic
+│                                   anchor per rule in docstring
 │
 ├── engine/
-│   └── risk_engine.py          CLI: evaluate a card against the rule set
+│   ├── risk_engine.py              CLI: evaluate a card against the rule set
+│   └── migrate_1_2_to_2_0.py       In-memory 1.2 → 2.0 auto-migration
 │
 ├── cards/
 │   ├── templates/
-│   │   └── blank_card.json     Starter template — copy and fill in
+│   │   └── blank_card.json         Starter template — copy and fill in
 │   └── examples/
 │       ├── healthcare_fl_tee_dp.json    S-01 pattern (NVIDIA FLARE / NHS)
 │       ├── public_sector_tre_dp.json    P-07 pattern (ONS SRS)
-│       └── finance_tee_mpc.json         P-05 pattern (cross-bank analytics)
+│       ├── finance_tee_mpc.json         P-05 pattern (cross-bank analytics)
+│       └── healthcare_sdc_tre.json      P-09 pattern (classical SDC, AI-model-derived release)
 │
 └── frontend/
-    └── index.html              Single-file interactive builder (no external deps)
+    └── index.html                  Single-file interactive builder (no external deps)
 ```
 
 ---
@@ -113,6 +126,8 @@ The overall rating is the worst single finding. Rules are grouped by category:
 | `GOV-` | Governance and procedural controls |
 | `SECTOR-` | Sector-specific requirements |
 | `REG-` | Regulatory alignment pointers |
+| `RISKCAL-` | Operational DP calibration — measured attack rate vs declared target [Kulynych et al. NeurIPS 2024 §3] |
+| `CPSDEV-` | CPS/IoT device-specific assurance — TEE attestation, device heterogeneity, firmware provenance |
 
 ---
 
@@ -167,6 +182,15 @@ The current engine is a static evaluator: it reads a card file and applies rules
 - **Solid Pod integration** — pull a live data profile from a Pod to parameterise risk rules
 - **Composition accounting** — integrate a DP accountant (e.g. Google's `dp_accounting` library) to give live epsilon estimates as PETs are added
 - **Tool registry** — map rule findings to candidate open-source tools (e.g. OpenDP, PySyft, TensorFlow Privacy)
+
+*Empirical follow-on (2026).* The CPSIoTSec 2026 paper (Smith, Rahulamathavan, Goel — anonymised for submission) demonstrates the integration of measured attack rates into the card's `risk_calibration.measured_advantage` block under medical-CPS FL deployment conditions, anchored in this 2.0 schema. The harness lives in the [stepwise-privacy-cards](https://github.com/j0hn-s/stepwise-privacy-cards) companion repository and is the canonical worked instance for the framework. The submission introduces:
+- a cross-IdP Solid federation (1 / 2 / 3 CSS instance comparison) exercising the new `evidence_class` field;
+- a TEE ablation (with / without AWS Nitro Enclaves) exercising the new `attestation_evidence` field;
+- device heterogeneity simulation (hospital-server / edge-gateway / wearable-simulator) exercising the new `device_class` field;
+- canary auditing migrated to one-run with CANIFE-crafted canaries [Steinke et al. NeurIPS 2023; Maddock et al. ICLR 2023] exercising the new `empirical_audit` block;
+- subject-MIA in parallel with per-record LiRA/RMIA [Suri et al. PoPETs 2023] exercising the `MIA-per-subject` enum value.
+
+See [FRAMEWORK_VS_INSTANCE.md](FRAMEWORK_VS_INSTANCE.md) for the explicit C2 (framework) / C3 (instance) distinction the paper draws.
 
 Contributions to any of these directions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

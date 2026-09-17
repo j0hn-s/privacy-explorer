@@ -71,12 +71,15 @@ Used throughout the survey paper and the explorer tables.
 | **In-use confidentiality** | Protection of data *while being computed on* (vs. at rest or in transit). The headline property of TEEs and FHE. | Industry usage; ODI (2024) |
 | **Output bound** | A formal limit on what a released artefact (statistic, model, synthetic dataset) can reveal about any individual. Provided by DP at release, or by ZKP for selective-disclosure proofs. | Dwork & Roth (2014) |
 
+**Note on classification fit.** `SDC` (classical statistical disclosure control — coarsening and suppression) is filed as "Algorithmic" in [data/primitives.yaml](data/primitives.yaml) because it transforms the released data directly, like `DP`/`SYN`, rather than the compute environment or access regime, like `FL`/`TEE`/`TRE`. It does not, however, meet this table's definition cleanly: it is not rooted in a formal privacy definition the way `DP`, `MPC`, `HE`, `ZKP` are. It is filed here anyway, imperfect fit stated rather than hidden, because a third family invented solely to make it fit would obscure the more useful fact: SDC is simultaneously the most institutionally mature primitive in the registry and the one with no portable, re-derivable guarantee at all. See `data/primitives.yaml` for the full caveat.
+
 ---
 
 ## 5. Reading conventions used in this repository
 
-- **PET IDs** (`DP`, `DP-L`, `DP-C`, `MPC`, `HE`, `ZKP`, `SYN`, `FL`, `TEE`, `TRE`) are the short keys defined in [data/primitives.yaml](data/primitives.yaml). They are stable foreign keys used across all tables and cards.
-- **Pairing IDs** (`P-01` … `P-08`) and **stack IDs** (`S-01` … `S-04`) are stable across versions. New entries get the next free ID; deprecated entries are marked, not renumbered.
+- **PET IDs** (`DP`, `DP-L`, `DP-C`, `MPC`, `HE`, `ZKP`, `SYN`, `FL`, `TEE`, `TRE`, `SDC`) are the short keys defined in [data/primitives.yaml](data/primitives.yaml). They are stable foreign keys used across all tables and cards.
+- **Pairing IDs** (`P-01` … `P-10`) and **stack IDs** (`S-01` … `S-04`) are stable across versions. New entries get the next free ID; deprecated entries are marked, not renumbered.
+- **Exclusion IDs** (`E-01` …) in [data/exclusions.yaml](data/exclusions.yaml) (T5) are the audit trail for combinations assessed but not admitted, or admitted after re-assessment — see [EXCLUDED_COMBINATIONS.md](EXCLUDED_COMBINATIONS.md).
 - **Confidence levels** for combinations are: `peer_reviewed`, `deployment_documented`, `practitioner_reported`, `theoretical`. Defined in [data/pairings.yaml](data/pairings.yaml).
 - **Maturity stages** (1–4) are defined once in [README.md §Assurance Maturity Rubric](README.md). They apply uniformly to primitives, combinations, and sectoral deployments.
 

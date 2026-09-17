@@ -33,7 +33,7 @@
 #   4 = Audit-ready / procurement-ready
 
 schema_version: "1.1"
-last_updated: "2026-05-24"
+last_updated: "2026-09-02"
 
 sectors:
 
@@ -50,7 +50,11 @@ sectors:
         role: primary
       - ref: S-02
         role: primary
+      - ref: P-09
+        role: primary
       - ref: P-08
+        role: secondary
+      - ref: P-10
         role: secondary
     idiosyncratic_constraints:
       legal_instruments:
@@ -59,11 +63,13 @@ sectors:
         - "Digital Economy Act 2017 (UK) Part 5 — data-sharing powers for research and statistics with accreditation requirements"
         - "Federal Information Security Modernization Act (US, FISMA) for federal statistical systems"
         - "Title 13 of the U.S. Code — confidentiality of census responses, with criminal penalties for disclosure"
+        - "U.S. Department of Commerce (2026) — Departmental Administrative Order 216-26: mandates coarsening and suppression (P-09 / SDC) and prohibits differential privacy, synthetic data, and record swapping, for Census Bureau and BEA statistical products"
       regulatory_expectations:
         - "ICO Anonymisation Code of Practice (UK)"
         - "ICO PETs Guidance (2023)"
         - "NIST SP 800-188 — De-Identifying Government Datasets (US)"
         - "NIST SP 800-226 (Draft) — DP evaluation guidelines (US)"
+        - "Operational interpretation of DP parameters expected at scale: μ-DP equivalent, attack-rate target, or FPR/FNR trade-off curve alongside ε/δ (Desfontaines 2023; interpretable-dp.org)."
       institutional_frameworks:
         - "Five Safes framework (ONS / ADR UK) — projects, people, data, settings, outputs"
         - "ADR UK accreditation regime for researchers and projects"
@@ -76,7 +82,13 @@ sectors:
         pure-cryptographic approaches because the assurance audience includes
         non-specialists. DP parameter choices are debated publicly (Kenny et al.
         2021; Muralidhar et al. 2025) — implies the framework should encourage
-        parameter manifests intended for non-specialist review.
+        parameter manifests intended for non-specialist review. DAO 216-26
+        (2026) shows this debate can also be resolved by mandate rather than
+        evidence: for the products it covers, this framework's P-07/S-02
+        (DP-based) and P-09 (SDC-based) rows are no longer freely chosen
+        alternatives but are assigned by regulation to different products —
+        the framework records this as a governance fact, not a technical
+        ranking between the two.
     assurance_posture: >
       Output checking, audit logs, reproducible privacy accounting, release
       policy documentation. Human-in-the-loop clearance is a first-class
@@ -116,6 +128,8 @@ sectors:
       - ref: S-01
         role: primary
       - ref: P-07
+        role: secondary
+      - ref: P-10
         role: secondary
     idiosyncratic_constraints:
       legal_instruments:
@@ -287,6 +301,7 @@ sectors:
         - "FTC enforcement actions on telemetry / consent (US)"
         - "Regulator scrutiny of Privacy Sandbox-style measurement APIs (UK CMA,
            ICO)"
+        - "Operational interpretation of DP parameters expected at scale: μ-DP equivalent, attack-rate target, or FPR/FNR trade-off curve alongside ε/δ — single-ε reporting at platform scale hides the trade-off (Desfontaines 2023; Ghazi et al. 2025)."
       institutional_frameworks:
         - "Privacy review programmes within platforms (Google, Apple, Meta)"
         - "External audit and conformance regimes (ISO/IEC 27701 for privacy

@@ -23,7 +23,7 @@
 #   theoretical           = analytically motivated but no substantive deployment evidence yet
 
 schema_version: "1.1"
-last_updated: "2026-05-24"
+last_updated: "2026-09-02"
 
 pairings:
 
@@ -297,5 +297,108 @@ pairings:
         url: "https://arxiv.org/abs/1802.06739"
       - text: "Houssiau et al. (2022) — TAPAS adversarial privacy audit"
         url: "https://arxiv.org/abs/2211.06550"
+      - text: "Stadler, Oprisanu & Troncoso (2022) — Synthetic data anonymisation Groundhog Day"
+        url: "https://www.usenix.org/system/files/sec22-stadler.pdf"
+
+  - id: P-09
+    pets: [SDC, TRE]
+    survey_paper_anchor: "Not in the survey paper (Smith et al. 2026) — added per DAO 216-26 (2026); see beyond-scalar-epsilon-outline.md §4"
+    exposure_problems: [EP-06, EP-01, EP-09]
+    combination_logic: >
+      Deterministic disclosure control (coarsening, suppression) applied to
+      outputs within a governed access environment, in place of — or
+      alongside — a formal statistical bound. The TRE provides the
+      institutional accountability layer (accreditation, output-clearance
+      workflow); SDC provides the release-level protection, assessed by
+      rule-based thresholds and human review rather than a re-derivable
+      privacy parameter. This is the classical pairing that predates P-07
+      (TRE + DP-C): output checking against the frequency rule and, for
+      magnitude tables, the (n,k)-dominance or p%-rule, is the default
+      disclosure control most TREs were built around, with DP explored later
+      and, in some jurisdictions, since walked back (see DAO 216-26 in SDC's
+      maturity_notes).
+    artefacts:
+      - output-clearance workflow and decision log
+      - frequency-rule threshold and, where applicable, (n,k)-dominance or
+        p%-rule parameters
+      - primary/secondary suppression pattern
+      - disclosure-risk evaluation (singling-out test, motivated-intruder
+        simulation)
+      - access and project approval audit records
+    advantage: >
+      No cryptographic or statistical machinery required; thresholds are
+      simple to state in a release policy and easy for a non-specialist
+      output-checker or regulator to inspect. The longest-documented
+      assurance regime of any pairing in this table — decades of production
+      use in national statistics predate every algorithmic PET here.
+    shortcoming: >
+      No portable, composable privacy guarantee: risk is reassessed by hand
+      per release and does not accumulate against a tracked budget the way a
+      DP accountant does. Heavy suppression can materially degrade utility
+      for small-area or high-dimensional tables; secondary-suppression
+      selection does not scale as cleanly as an automated noise mechanism
+      once a programme of releases grows large (see SDC bottleneck).
+    confidence: deployment_documented
+    references:
+      - text: "Office for National Statistics (2024) — Statistical Disclosure Control policy"
+        url: "https://www.ons.gov.uk/aboutus/transparencyandgovernance/datastrategy/datapolicies/statisticaldisclosurecontrol"
+      - text: "U.S. Census Bureau (2026) — Understanding the New Disclosure Avoidance Policy"
+        url: "https://www.census.gov/newsroom/blogs/director/2026/08/understanding-the-new-disclosure-avoidance-policy.html"
+      - text: "U.S. Department of Commerce (2026) — Departmental Administrative Order 216-26: Disclosure Avoidance for Statistical Products"
+        url: "https://www.commerce.gov/opog/disclosure-avoidance-statistical-products"
+      - text: "Hundepool et al. (2012) — Statistical Disclosure Control (Wiley)"
+        url: ""
+
+  - id: P-10
+    pets: [TRE, SYN]
+    survey_paper_anchor: "Not in Table 4.2 explicitly — promoted from data/exclusions.yaml E-03 following a 2026-09 evidence re-assessment"
+    exposure_problems: [EP-06, EP-05]
+    combination_logic: >
+      A synthetic "development" dataset, generated to mirror the real
+      dataset's schema and broad statistical properties, is made available
+      outside the TRE so researchers can develop and test analysis code
+      before — and typically as a precondition for — being granted
+      accredited access to the real data inside the TRE itself. The
+      synthetic dataset is not the analysis deliverable; the real analysis
+      still runs on real data under full TRE governance. This is distinct
+      from P-08 (SYN + DP-C): P-08 is a DP-bounded synthetic release *as*
+      the deliverable, whereas P-10 uses synthetic data as a rehearsal
+      artefact that feeds into, and shortens, the TRE access pathway.
+    artefacts:
+      - synthetic-dataset generation methodology and fidelity statement
+        (what schema and summary statistics it preserves, and what it does
+        not)
+      - disclosure-risk evaluation of the synthetic development dataset
+        itself — development-only synthetic data is not automatically
+        risk-free (Stadler et al. 2022)
+      - code-development-to-data-release (CDDR) cycle-time tracking
+      - standard TRE accreditation and output-clearance workflow (unchanged
+        for the eventual real-data analysis)
+    advantage: >
+      Shortens the disclosure-review bottleneck substantially: a
+      peer-reviewed evaluation of Simulacrum (a synthetic cancer registry
+      built by Health Data Insight with NHS England's National Disease
+      Registration Service) found an average 2.3-month
+      code-development-to-data-release cycle across 18 projects. Lets a
+      much larger population of researchers explore feasibility and write
+      working code before any of them touch real records, without changing
+      the assurance regime applied to the real-data analysis itself.
+    shortcoming: >
+      The synthetic development dataset's own disclosure risk is a real,
+      sometimes overlooked, question in its own right: if it is made too
+      faithful to the source data, it constitutes an unmitigated synthetic
+      release (SYN's own bottleneck applies to it directly); if it is not
+      faithful enough, code developed against it may not behave correctly
+      against the real TRE data — a validity gap, not just a privacy one.
+      Whether results and code developed on synthetic data reliably
+      generalise to the real-data analysis is not verified in general.
+    confidence: peer_reviewed
+    references:
+      - text: "Health Data Insight / NHS England NDRS (2025) — Leveraging Synthetic Data to Facilitate Research: A Collaborative Model for Analyzing Sensitive National Cancer Registry Data in England"
+        url: "https://link.springer.com/article/10.1007/s43441-025-00820-z"
+      - text: "Office for National Statistics, Data Science Campus — Enabling Data Access through Privacy Preserving Synthetic Data"
+        url: "https://datasciencecampus.ons.gov.uk/enabling-data-access-through-privacy-preserving-synthetic-data/"
+      - text: "NCRAS guide to using the Simulacrum and submitting code"
+        url: "https://assets.publishing.service.gov.uk/media/627398608fa8f57a3d121908/NCRAS_guide_to_using_the_Simulacrum_and_submitting_code.pdf"
       - text: "Stadler, Oprisanu & Troncoso (2022) — Synthetic data anonymisation Groundhog Day"
         url: "https://www.usenix.org/system/files/sec22-stadler.pdf"

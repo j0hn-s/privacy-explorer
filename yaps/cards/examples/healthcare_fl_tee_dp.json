@@ -1,18 +1,18 @@
 {
   "card_id": "CARD-healthcare-fl-tee-dp-202605",
-  "schema_version": "1.1",
+  "schema_version": "2.0",
   "title": "Healthcare Federated Learning — FL + TEE + DP-C (S-01 pattern)",
   "description": "Cross-institutional federated training for clinical imaging or screening models, following the NVIDIA FLARE / NHS FLIP pattern. Local data never leaves institution; aggregation runs in a hardware-isolated enclave; DP bounds statistical disclosure from the released model.",
   "created": "2026-05-01",
   "last_updated": "2026-05-01",
   "status": "review",
-  "authors": ["Privacy Explorer — example card"],
-
+  "authors": [
+    "Privacy Explorer — example card"
+  ],
   "architecture_pattern": {
     "stack_ref": "S-01",
     "custom": false
   },
-
   "pet_components": [
     {
       "primitive_id": "FL",
@@ -58,27 +58,28 @@
       "implementation_status": "deployed",
       "tooling": [
         {
-          "name": "TensorFlow Privacy",
-          "url": "https://github.com/tensorflow/privacy",
-          "licence": "Apache 2.0"
+          "name": "Opacus",
+          "url": "https://github.com/pytorch/opacus",
+          "licence": "Apache 2.0",
+          "notes": "Per-example gradient clipping (GradSampleModule) + PRV accountant [Gopi et al. NeurIPS 2021], RDP as fallback. This is what the executable stepwise-privacy-cards instance of this pattern actually uses — see card/example_chain.json in that repository."
         },
         {
           "name": "Google dp_accounting",
           "url": "https://github.com/google/differential-privacy/tree/main/python/dp_accounting",
-          "licence": "Apache 2.0"
+          "licence": "Apache 2.0",
+          "notes": "Used as a cross-check accountant, not the primary one — comparing an independent accountant implementation against Opacus's own is a cheap way to catch accounting bugs."
         }
       ],
       "parameters": {
         "epsilon": 4.0,
-        "delta": 1e-5,
+        "delta": 1e-05,
         "noise_mechanism": "Gaussian",
         "clipping_norm": 1.0,
-        "accounting_method": "RDP (Rényi DP)"
+        "accounting_method": "PRV (Gopi et al. 2021), RDP fallback"
       },
-      "parameter_notes": "ε=4.0 is a pragmatic choice for healthcare imaging utility; tighter values degrade AUROC significantly. Composition tracked across all 100 training rounds via RDP accountant."
+      "parameter_notes": "ε=4.0 is a pragmatic choice for healthcare imaging utility; tighter values degrade AUROC significantly. Composition tracked across all 100 training rounds. Per-example (not batch-mean) gradient clipping is required for this ε to be a valid DP-SGD guarantee at all — clipping the batch mean bounds the aggregate's norm, not any single example's sensitivity, and produces an ε with no operational meaning."
     }
   ],
-
   "trust_model": {
     "summary": "Participating institutions are semi-trusted data holders. The aggregation server is operated by a cloud provider and is considered honest-but-curious at the OS/hypervisor level — the TEE isolates it from the aggregation computation. The released model is considered public output and must satisfy the DP bound. External analysts are untrusted.",
     "threat_actors": [
@@ -107,30 +108,41 @@
       "Supply-chain compromise of the NVIDIA FLARE framework"
     ]
   },
-
   "assurance_targets": {
     "required_artefacts": [
       {
         "artefact": "attestation report and enclave measurement (TEE layer)",
         "status": "exists",
-        "location": "internal/attestation/round_*.json",
-        "notes": "Generated per aggregation round; pinned measurement hash stored in change-control log"
+        "notes": "Generated per aggregation round; pinned measurement hash stored in change-control log",
+        "evidence": {
+          "location": "internal/attestation/round_*.json",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "privacy accountant and parameter manifest (DP layer)",
         "status": "exists",
-        "location": "internal/dp/accountant_log.csv",
-        "notes": "RDP accountant tracks epsilon spend across all 100 rounds; total budget ε=4.0 not exceeded"
+        "notes": "RDP accountant tracks epsilon spend across all 100 rounds; total budget ε=4.0 not exceeded",
+        "evidence": {
+          "location": "internal/dp/accountant_log.csv",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "training protocol and aggregation specification (FL layer)",
         "status": "exists",
-        "location": "internal/protocol/fl_spec_v2.pdf"
+        "evidence": {
+          "location": "internal/protocol/fl_spec_v2.pdf",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "convergence and robustness monitoring report",
         "status": "exists",
-        "location": "internal/monitoring/convergence_report_202605.pdf"
+        "evidence": {
+          "location": "internal/monitoring/convergence_report_202605.pdf",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "output clearance or release log",
@@ -140,13 +152,15 @@
       {
         "artefact": "side-channel mitigation declaration for the aggregation enclave",
         "status": "exists",
-        "location": "internal/tee/side_channel_posture.md"
+        "evidence": {
+          "location": "internal/tee/side_channel_posture.md",
+          "evidence_class": "reproducible-record"
+        }
       }
     ],
     "current_maturity_stage": 2,
     "maturity_justification": "Workflow is repeatable and documented. Stage 3 blocked by absence of formal release log and pending clinical governance board sign-off on output clearance process."
   },
-
   "governance_controls": {
     "output_control": "human-review",
     "access_control": "Institutional DUA (Data Use Agreement) required per participating site; access to aggregated model gated on clinical governance board approval",
@@ -165,27 +179,36 @@
       }
     ]
   },
-
   "deployment_context": {
     "sector_ref": "healthcare",
     "sub_sector": "cross-institutional oncology imaging research",
-    "data_subjects_jurisdiction": ["UK", "EU"],
+    "data_subjects_jurisdiction": [
+      "UK",
+      "EU"
+    ],
     "scale": "limited-production"
   },
-
   "regulatory_context": {
     "applicable_regulations": [
       {
         "regulation": "UK GDPR",
         "jurisdiction": "UK",
-        "relevant_articles": ["Art. 25 (data protection by design)", "Art. 35 (DPIA)", "Art. 9 (special category data)"],
+        "relevant_articles": [
+          "Art. 25 (data protection by design)",
+          "Art. 35 (DPIA)",
+          "Art. 9 (special category data)"
+        ],
         "alignment_status": "partial",
         "gap_notes": "Art. 9 basis documentation for medical research (Art. 9(2)(j)) in progress"
       },
       {
         "regulation": "EU GDPR",
         "jurisdiction": "EU",
-        "relevant_articles": ["Art. 25", "Art. 35", "Art. 9"],
+        "relevant_articles": [
+          "Art. 25",
+          "Art. 35",
+          "Art. 9"
+        ],
         "alignment_status": "not-assessed"
       }
     ],
@@ -201,42 +224,50 @@
       }
     ]
   },
-
   "tooling_candidates": [
     {
       "name": "NVIDIA FLARE",
       "url": "https://nvflare.readthedocs.io/",
-      "primitive_ids": ["FL"],
+      "primitive_ids": [
+        "FL"
+      ],
       "maturity": "production",
       "notes": "Used by NHS FLIP (King's College London) and multiple clinical FL deployments"
     },
     {
       "name": "TensorFlow Privacy",
       "url": "https://github.com/tensorflow/privacy",
-      "primitive_ids": ["DP-C"],
+      "primitive_ids": [
+        "DP-C"
+      ],
       "maturity": "production"
     },
     {
       "name": "Google dp_accounting",
       "url": "https://github.com/google/differential-privacy/tree/main/python/dp_accounting",
-      "primitive_ids": ["DP-C"],
+      "primitive_ids": [
+        "DP-C"
+      ],
       "maturity": "production",
       "notes": "RDP and PRV accountants; recommended for FL+DP-C composition tracking"
     },
     {
       "name": "OpenDP",
       "url": "https://opendp.org/",
-      "primitive_ids": ["DP-C"],
+      "primitive_ids": [
+        "DP-C"
+      ],
       "maturity": "production"
     },
     {
       "name": "AWS Nitro Enclaves",
       "url": "https://aws.amazon.com/ec2/nitro/nitro-enclaves/",
-      "primitive_ids": ["TEE"],
+      "primitive_ids": [
+        "TEE"
+      ],
       "maturity": "production"
     }
   ],
-
   "residual_risks": [
     {
       "risk": "Coordinator inside TEE sees individual institution updates before summation — TEE does not provide MPC-grade isolation of individual contributions",
@@ -254,7 +285,6 @@
       "mitigation_path": "Per-site utility evaluation and fairness analysis as part of convergence reporting"
     }
   ],
-
   "utility_evidence": {
     "primary_metric": "AUROC (malignant nodule detection)",
     "baseline_value": 0.91,
@@ -262,7 +292,6 @@
     "unit": "AUROC",
     "notes": "4-point utility degradation at ε=4.0 vs. non-private centralised baseline. Acceptable per clinical governance assessment for this use case."
   },
-
   "change_log": [
     {
       "date": "2026-05-01",
@@ -275,17 +304,27 @@
       "author": "Privacy Explorer"
     }
   ],
-
-  "exposure_problem_refs": ["EP-04", "EP-03", "EP-01", "EP-11"],
-
+  "exposure_problem_refs": [
+    "EP-04",
+    "EP-03",
+    "EP-01",
+    "EP-11"
+  ],
   "jurisdictional_context": {
-    "data_subjects": ["UK", "EU"],
-    "controllers": ["UK"],
-    "operators": ["UK", "EU"],
+    "data_subjects": [
+      "UK",
+      "EU"
+    ],
+    "controllers": [
+      "UK"
+    ],
+    "operators": [
+      "UK",
+      "EU"
+    ],
     "cross_border_mechanism": "UK-EU adequacy; institutional DUAs between sites",
     "notes": "UK-only and EU-only patient cohorts; operator in EU region with UK control. No US data flow in current scope."
   },
-
   "stepwise_chain": [
     {
       "step": 0,

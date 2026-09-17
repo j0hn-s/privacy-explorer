@@ -1,0 +1,112 @@
+# T5 — Assessed and Excluded Combinations
+#
+# Schema version: 1.0
+# Companion to T0-T4. Where T2/T3 list combinations admitted to the
+# registry, T5 keeps the audit trail of combinations that were *considered*
+# and where they landed: excluded (with a named evidence gap and a revisit
+# trigger), or promoted (moved from here into T2/T3 once evidence caught up,
+# kept here as the audit-trail record rather than deleted).
+#
+# This exists because an empty cell in T2/T3 is ambiguous: is a combination
+# absent because it doesn't make sense, because no one has looked, or because
+# it was looked at and rejected? T5 answers that explicitly, so the design
+# space reads as narrow for stated reasons rather than by omission — directly
+# addressing the combinatorics-vs-practice gap in the survey paper's §7.
+# Named as a gap in DIAGRAM.md's "Suggested Further Iterations" #3; this file
+# is the first pass at closing it.
+#
+# status values:
+#   excluded  = assessed, not currently admitted to T2/T3; evidence_gap and
+#               revisit_trigger explain what would change the assessment
+#   promoted  = was excluded, has since been admitted to T2/T3 with a
+#               dated note and a pointer to the resulting entry
+#
+# Cross-references:
+#   pets[] values must exist in primitives.yaml as PRIMITIVE.id
+#   promoted_to (if status: promoted) must exist in pairings.yaml (PAIRING.id)
+#   or stacks.yaml (STACK.id)
+
+schema_version: "1.0"
+last_updated: "2026-09-02"
+
+exclusions:
+
+  - id: E-01
+    pets: [HE, FL]
+    status: excluded
+    considered_as: >
+      HE-based secure aggregation as an alternative to MPC secure
+      aggregation (P-02) or TEE-based aggregation (P-03) — encrypting client
+      updates so the coordinator only ever sums ciphertexts.
+    reason: >
+      Research exists on HE-based gradient aggregation in federated
+      learning, but we found no deployment-documented or peer-reviewed
+      production instance at practical FL scale — only small-scale research
+      prototypes. HE's own compute-cost bottleneck (10^3-10^5x plaintext,
+      per data/primitives.yaml) is aggravated by FL's round structure, since
+      every round re-incurs the cost. MPC (P-02) and TEE (P-03) dominate the
+      aggregation-privacy space in actual deployments for this reason.
+    evidence_gap: >
+      No peer-reviewed benchmark or documented deployment of HE-based
+      secure aggregation at a client/round count comparable to production
+      FL (Bonawitz et al. 2017-scale). Prototype-level only.
+    revisit_trigger: >
+      A documented production deployment, or a peer-reviewed benchmark,
+      showing HE-based aggregation at practical FL scale (client count and
+      round latency comparable to existing P-02/P-03 deployments).
+    confidence_note: >
+      Assessed 2026-09. Revisit if hardware-accelerated HE (FPGA, photonic —
+      see HE's own maturity_notes) closes the practicality gap.
+
+  - id: E-02
+    pets: [MPC, DP]
+    status: excluded
+    considered_as: >
+      A standalone MPC + DP pairing for joint computation outside a
+      federated-learning context.
+    reason: >
+      MPC+DP patterns documented in the literature are almost always
+      embedded within a specific architecture — federated learning
+      (S-03: FL + MPC + DP-C) or a bespoke cross-institutional computation
+      that would warrant its own T2 entry — rather than existing as a
+      standalone, sector-general pairing with an assurance narrative
+      distinct from S-03's base pair (P-02). Admitting a standalone MPC+DP
+      row risks double-counting P-02 with an extra DP layer under a
+      different name, rather than describing a genuinely different
+      deployment pattern.
+    evidence_gap: >
+      No identified deployment pattern combining MPC and DP outside FL that
+      carries its own distinct assurance story separate from S-03's.
+    revisit_trigger: >
+      A genuinely non-FL joint computation (e.g. cross-institutional risk
+      pooling, or a query-answering service) combining MPC and DP with an
+      assurance narrative that does not reduce to S-03's.
+    confidence_note: >
+      Assessed 2026-09. Distinct from S-03, which already covers the
+      FL + MPC + DP case; this entry is about MPC + DP with no FL layer.
+
+  - id: E-03
+    pets: [TRE, SYN]
+    status: promoted
+    considered_as: >
+      Synthetic "development" data hosted alongside a Trusted Research
+      Environment, letting researchers build and test analysis code before
+      (or instead of) live TRE access to the real dataset.
+    reason: >
+      Originally excluded in DIAGRAM.md's first "Suggested Further
+      Iterations" pass ("absent because deployment evidence is thin").
+      Re-assessed 2026-09 and found to have stronger evidence than several
+      combinations already admitted to T2 at `theoretical` confidence: the
+      ONS Data Science Campus documents synthetic "dummy data" issued ahead
+      of Secure Research Service / Integrated Data Service accreditation
+      specifically so researchers can develop code before requesting real
+      access; Health Data Insight's Simulacrum (built with NHS England's
+      National Disease Registration Service) is a synthetic cancer registry
+      used for exactly this purpose ahead of Cancer Analysis System access,
+      with a peer-reviewed evaluation across 18 projects reporting an
+      average 2.3-month code-development-to-data-release cycle.
+    evidence_gap: "Resolved — see promoted_to."
+    revisit_trigger: "n/a — promoted."
+    confidence_note: "Promoted 2026-09-02. See data/pairings.yaml P-10 and its references."
+    promoted_to: "P-10"
+    promoted_date: "2026-09-02"

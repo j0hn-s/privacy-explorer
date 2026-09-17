@@ -4,12 +4,12 @@
 # Companion to T1-T4. Where T1-T4 read "primitive → combination → stack → sector",
 # T0 reads "exposure problem → which PETs respond → at what cost".
 #
-# This index exists because PET combinations multiply faster than they can be
-# usefully characterised. Rather than enumerating exotic combinations exhaustively,
-# T0 names the *exposure problems* practitioners actually face. A combination is
-# legitimate when it solves a specific exposure problem with an inspectable
-# assurance story; combinations that do not map to a named problem are usually
-# either redundant or not yet useful.
+# This index exists because PET combinations multiply and evolve faster than they 
+# can be usefully characterised. Rather than enumerating exotic combinations 
+# exhaustively, T0 names the *exposure problems* practitioners actually face. A 
+# combination is legitimate when it solves a specific exposure problem with an 
+# inspectable assurance story; combinations that do not map to a named problem are 
+# usually either redundant or not yet useful.
 #
 # Cross-references:
 #   responding_pets[]   -> primitives.yaml (PRIMITIVE.id) or pairings.yaml (PAIRING.id)
@@ -23,7 +23,7 @@
 # per model type.
 
 schema_version: "1.0"
-last_updated: "2026-05-24"
+last_updated: "2026-09-02"
 
 exposure_problems:
 
@@ -42,6 +42,8 @@ exposure_problems:
         note: "DP-C inside a TRE; combines formal output bound with human output checking."
       - ref: P-08
         note: "When the release is a dataset-shaped artefact, generator + DP."
+      - ref: SDC
+        note: "Deterministic alternative: generalise or suppress the disclosive cells directly rather than bound them statistically. No portable privacy guarantee, but the currently mandated response for U.S. Census Bureau and BEA statistical products (DAO 216-26, 2026)."
     assurance_anchors:
       - privacy accountant
       - parameter manifest (epsilon, delta, sensitivity)
@@ -56,11 +58,20 @@ exposure_problems:
     description: >
       Two or more parties want to compute over their combined data, but no party
       is permitted (legally, contractually, or commercially) to send raw records
-      to another. The exposure problem is the boundary crossing itself.
+      to another. The exposure problem is the boundary crossing itself. This
+      covers two computation shapes that are easy to conflate because the same
+      primitives respond to both: computing a joint statistic (a sum, mean,
+      count, or other aggregate) in one pass, and training a joint model over
+      multiple rounds of gradient exchange. The worked examples currently
+      catalogued under this problem (P-02, S-03) are model-training-shaped; a
+      joint-statistic instance — computing a shared metric across
+      independently-governed data holders with no training loop at all, e.g.
+      a federation of data-access nodes answering a query jointly — is equally
+      valid here and does not currently have a worked example of its own.
     disclosure_types: [identity, attribute, membership]
     responding_pets:
       - ref: MPC
-        note: "Cryptographic joint computation without revealing inputs."
+        note: "Cryptographic joint computation without revealing inputs — applies equally to a one-shot statistic and to per-round model-update aggregation."
       - ref: HE
         note: "Computation over ciphertexts; party doing the work sees only encrypted state."
       - ref: FL
@@ -146,6 +157,8 @@ exposure_problems:
         note: "SYN + DP-C. Formal privacy bound on generator training or release."
       - ref: S-04
         note: "TEE + SYN + DP-C. Attested DP-trained generation in a hardware-isolated environment."
+      - ref: P-10
+        note: "TRE + SYN. A different intent to the other responses here: the synthetic artefact is a development rehearsal for TRE access, not the release deliverable itself — see Simulacrum / ONS synthetic dummy-data practice."
     assurance_anchors:
       - disclosure-risk evaluation (MIA, linkage, outlier audit)
       - utility benchmark relative to real-data baseline
@@ -171,6 +184,10 @@ exposure_problems:
         note: "TRE + DP-C when statistical releases need a formal bound on top of human checking."
       - ref: S-02
         note: "TRE + TEE + DP-C for the highest-sensitivity governed analytics."
+      - ref: P-09
+        note: "TRE + SDC. Output-clearance workflow enforced with deterministic generalisation/suppression rules rather than (or alongside) a statistical bound — the longest-standing pairing for this exposure problem, predating DP-based approaches."
+      - ref: P-10
+        note: "TRE + SYN. Shortens the programmatic-access bottleneck itself: synthetic development data lets researchers write and test code before requesting accredited access, rather than changing what the real-data access regime requires."
     assurance_anchors:
       - access audit logs
       - output-clearance log
@@ -243,6 +260,8 @@ exposure_problems:
         note: "Smoothing / generative modelling reduces direct identifiability — quality of protection depends on audit."
       - ref: TRE
         note: "Output checking catches small-cell singling-out via human review."
+      - ref: SDC
+        note: "The classical, direct response: generalise the quasi-identifiers or suppress the singling-out cell. Cell suppression and minimum risk-set thresholds are the historical instrument for this exposure problem, predating DP-C and SYN as responses."
     assurance_anchors:
       - disclosure-risk evaluation (singling-out test, motivated-intruder simulation)
       - cell suppression and minimum risk-set policies

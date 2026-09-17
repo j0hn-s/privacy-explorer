@@ -54,6 +54,14 @@ erDiagram
         string stack_ref FK "ref PAIRING or STACK id"
         string role "primary, secondary, or experimental"
     }
+    EXCLUSION {
+        string exclusion_id PK "e.g. E-01"
+        string pets "primitives considered together"
+        string status "excluded or promoted"
+        string evidence_gap
+        string revisit_trigger
+        string promoted_to FK "ref PAIRING or STACK id, if status=promoted"
+    }
 
     PRIMITIVE ||--o{ PAIRING : "pet_a"
     PRIMITIVE ||--o{ PAIRING : "pet_b"
@@ -62,6 +70,8 @@ erDiagram
     SECTOR ||--o{ SECTOR_STACK : "uses"
     PAIRING ||--o{ SECTOR_STACK : "deployed_as"
     STACK ||--o{ SECTOR_STACK : "deployed_as"
+    PRIMITIVE ||--o{ EXCLUSION : "considered_in"
+    PAIRING o|--o| EXCLUSION : "promoted_to (optional)"
 ```
 
 ---
@@ -83,6 +93,7 @@ flowchart LR
         MPC([MPC]):::algo
         ZKP([ZKP]):::algo
         SYN([SYN]):::algo
+        SDC([SDC]):::algo
     end
 
     subgraph T1_arch["T1 — Architectural PETs"]
@@ -102,6 +113,8 @@ flowchart LR
         P06["P-06 · TEE + ZKP"]:::pair
         P07["P-07 · TRE + DP"]:::pair
         P08["P-08 · SYN + DP"]:::pair
+        P09["P-09 · SDC + TRE"]:::pair
+        P10["P-10 · TRE + SYN"]:::pair
     end
 
     subgraph T3["T3 — Three-PET Stacks"]
@@ -117,8 +130,9 @@ flowchart LR
     MPC --> P02 & P05
     TEE --> P03 & P04 & P05 & P06
     ZKP --> P06
-    TRE --> P07
-    SYN --> P08
+    TRE --> P07 & P09 & P10
+    SYN --> P08 & P10
+    SDC --> P09
 
     P03 --"+DP"--> S01
     P07 --"+TEE"--> S02
@@ -148,11 +162,14 @@ flowchart TD
 
     P07_a["P-07\nTRE+DP"]:::pair
     S02_a["S-02\nTRE+TEE+DP"]:::stack
+    P09_a["P-09\nSDC+TRE"]:::pair
     P08_a["P-08\nSYN+DP"]:::pair
+    P10_a["P-10\nTRE+SYN"]:::pair
 
     P01_a["P-01\nFL+DP"]:::pair
     P03_a["P-03\nFL+TEE"]:::pair
     S01_a["S-01\nFL+TEE+DP"]:::stack
+    P10_h["P-10\nTRE+SYN"]:::pair
 
     P05_a["P-05\nTEE+MPC"]:::pair
     P04_a["P-04\nTEE+DP"]:::pair
@@ -164,14 +181,14 @@ flowchart TD
 
     P06_b["P-06\nTEE+ZKP"]:::pair
 
-    PUB --> P07_a & S02_a & P08_a
-    HEALTH --> P01_a & P03_a & S01_a
+    PUB --> P07_a & S02_a & P09_a & P08_a & P10_a
+    HEALTH --> P01_a & P03_a & S01_a & P10_h
     FIN --> P05_a & P04_a & P06_a
     TECH --> P01_b & P02_a & P04_b
     WEB3 --> P06_b
 ```
 
-> **Note on duplicated nodes.** Some pairs (e.g. `P-01 FL+DP`, `P-04 TEE+DP`, `P-06 TEE+ZKP`) appear in multiple sectors. They are duplicated here for layout clarity; in the data model they are single rows referenced by multiple `SECTOR_STACK` entries.
+> **Note on duplicated nodes.** Some pairs (e.g. `P-01 FL+DP`, `P-04 TEE+DP`, `P-06 TEE+ZKP`, `P-10 TRE+SYN`) appear in multiple sectors. They are duplicated here for layout clarity; in the data model they are single rows referenced by multiple `SECTOR_STACK` entries.
 
 ---
 
@@ -347,13 +364,13 @@ The following changes would materially strengthen this resource. They are ordere
 
 Current entries mix peer-reviewed deployments with practitioner-reported combinations. Adding a `confidence` field — e.g. `peer_reviewed`, `deployment_documented`, `practitioner_reported`, `theoretical` — would let readers calibrate how much weight to give each row and make the suggestive/evidenced distinction explicit in the data rather than only in prose.
 
-### 2. Expand T2 to include underrepresented combinations
+### 2. Expand T2 to include underrepresented combinations — partially done (2026-09)
 
-`HE + FL`, `MPC + DP` (standalone, not inside FL), and `TRE + SYN` are absent because deployment evidence is thin, but they are analytically important. Adding them with a `confidence: theoretical` flag and a note on what assurance evidence is missing would make the empty-cell rationale explicit.
+`HE + FL`, `MPC + DP` (standalone, not inside FL), and `TRE + SYN` were flagged here as absent because deployment evidence looked thin. Re-assessed 2026-09: `TRE + SYN` turned out to have stronger evidence than several combinations already admitted at `theoretical` confidence (a peer-reviewed Simulacrum evaluation; documented ONS synthetic-dummy-data practice) and has been promoted to `P-10`. `HE + FL` and standalone `MPC + DP` were reassessed and kept excluded, each with a named evidence gap and revisit trigger — see [EXCLUDED_COMBINATIONS.md](EXCLUDED_COMBINATIONS.md) (`E-01`, `E-02`). The lesson from this pass: "thin evidence" decays and should be periodically re-checked, not treated as a permanent classification — a good prompt for workshop participants who may know of deployments that close the remaining gaps.
 
-### 3. Add a T5: Excluded Combinations registry
+### 3. Add a T5: Excluded Combinations registry — done (2026-09)
 
-A short table documenting combinations that were considered and excluded — with the reason (e.g. "no assurance-coherent deployment found", "incompatible threat models", "governance misalignment") — would strengthen the argument that the design space is narrow for substantive reasons, not selective omission. This directly addresses the combinatorics-vs-practice gap in Section 7 of the paper.
+Built as [EXCLUDED_COMBINATIONS.md](EXCLUDED_COMBINATIONS.md) and [data/exclusions.yaml](data/exclusions.yaml). Documents combinations considered and their disposition — `excluded` (with a named evidence gap and revisit trigger) or `promoted` (kept as an audit-trail record once admitted to T2/T3, per item 2 above). Directly addresses the combinatorics-vs-practice gap in Section 7 of the paper. Workshop-facing by design: each excluded entry is an explicit invitation for a stakeholder to name the deployment or paper that would close the gap.
 
 ### 4. Add temporal fields
 
@@ -363,9 +380,9 @@ A short table documenting combinations that were considered and excluded — wit
 
 A `references` list in each T2/T3 entry currently uses citation strings. Adding optional `url` sub-fields would let readers verify claims directly and would make this useful as a living evidence base rather than a static table.
 
-### 6. Build a table-generation script
+### 6. Build a table-generation script — done (2026-09)
 
-A lightweight Python script (`scripts/generate_tables.py`) that reads the four YAML files and outputs the `README.md` tables would close the gap between source data and rendered documentation. This makes the YAML canonical and prevents tables drifting from data across edits.
+Built as `scripts/generate_tables.py`. Reads all five YAML files (T0–T5) and rewrites the T0–T4 tables in `README.md` between `<!-- AUTOGEN:Tn START/END -->` markers; `--check` exits non-zero if the file is stale, for CI use. Regenerating immediately surfaced two pre-existing hand-sync bugs that had been sitting in the tables undetected: the healthcare sector row was silently missing `P-07`, and the web3 row listed a `ZKP` "standalone" entry that was never actually in `data/sectors.yaml` — exactly the drift this script exists to prevent.
 
 ### 7. Add a `risk_notes` field to T2 and T3
 

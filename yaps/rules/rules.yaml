@@ -9,6 +9,9 @@
 #   GOV-    Governance and procedural controls
 #   SECTOR- Sector-specific requirements
 #   REG-    Regulatory alignment pointers
+#   SDC-    Statistical disclosure control (legacy, non-formal disclosure-
+#           limitation checks — see data/primitives.yaml SDC entry for why
+#           this category exists alongside, not instead of, ASSUR-*/COMP-*)
 #
 # Severity levels:
 #   RED    — high-priority gap; typically blocks deployment readiness
@@ -245,12 +248,19 @@ rules:
     severity: RED
     description: >
       A DP deployment without a documented parameter manifest (epsilon, delta,
-      noise mechanism, clipping norm, sensitivity) is unauditable.
-    condition_logic: "has_any_dp() and missing_artefact('parameter manifest')"
+      noise mechanism, clipping norm) is unauditable. Schema 2.0 reads the
+      manifest from `pet_components[].parameters` directly (so a card does
+      not need a separately-listed artefact entry); the rule falls back to
+      the legacy `missing_artefact('parameter manifest')` check for 1.x
+      cards that still record the manifest as a named artefact rather than
+      inline parameters.
+    condition_logic: "has_any_dp() and not dp_has_parameter_manifest() and missing_artefact('parameter manifest') and missing_artefact('accountant log')"
     finding: >
-      DP is present but no parameter manifest artefact is recorded. Epsilon, delta,
-      noise mechanism, and clipping/sensitivity values must be documented for the
-      privacy claim to be reproducible or auditable.
+      DP is present but no parameter manifest is recorded — neither inline on
+      `pet_components[].parameters` (schema 2.0: epsilon, delta, noise_mechanism,
+      clipping_norm) nor as a named artefact under `assurance_targets`. Epsilon,
+      delta, noise mechanism, and clipping/sensitivity values must be documented
+      for the privacy claim to be reproducible or auditable.
     references:
       - "NIST SP 800-226 (Draft) — DP evaluation guidelines"
       - "Dwork & Roth (2014)"
@@ -820,3 +830,290 @@ rules:
       - "Carlini et al. (2022) — Membership inference attacks from first principles"
       - "Houssiau et al. (2022) — TAPAS"
       - "interpretable-dp.org — gdpnum"
+
+  # ─── Schema 2.0 RISKCAL extensions ─────────────────────────────────────────
+  # Added with the 2.0 schema. These rules read the restructured
+  # risk_calibration block (design_target / accountant / empirical_audit /
+  # measured_advantage) rather than the 1.2 flat structure. Cards in 1.x form
+  # are auto-migrated by the engine before evaluation, so the rules see the
+  # canonical 2.0 paths either way.
+
+  - id: RISKCAL-004
+    name: "Measured attack rate exceeds design target"
+    category: RISKCAL
+    severity: AMBER
+    description: >
+      The card declares an operational target attack-rate at a stated FPR
+      (`design_target.attack_target.target_advantage`) and reports an empirical
+      measured rate from a SOTA attack (`measured_advantage.value`). When
+      measured > target, the deployment's operational bound has been breached
+      at the point estimate. This is the operational complement to the
+      accountant epsilon — what the released model actually concedes against a
+      stated attacker, not what composition admits in worst case.
+    condition_logic: "measured_exceeds_target()"
+    finding: >
+      Measured attack advantage exceeds the deployment's declared target. Either
+      retighten the DP parameters (σ, T, q) until the measured rate is within
+      target, accept the higher residual explicitly in the chain (updating
+      `design_target.attack_target.target_advantage`), or move to a stricter
+      stack (e.g. add MPC secure aggregation).
+    references:
+      - "Carlini et al. (2022) — Membership inference from first principles, §3"
+      - "Kulynych et al. (NeurIPS 2024) — Attack-aware noise calibration"
+
+  - id: RISKCAL-005
+    name: "Evidence class below what the threat profile requires"
+    category: RISKCAL
+    severity: AMBER
+    description: >
+      The card carries `evidence_class: reproducible-record` on a claim that
+      the deployment's `threat_profile` indicates should be backed by stronger
+      evidence (signed-record or above). A reproducible record is sufficient
+      for internal audit-trail discipline but insufficient as dispute evidence
+      against a non-trivial adversary. Surfacing the gap on the card is the
+      first step toward closing it.
+    condition_logic: "any_reproducible_only_evidence() and threat_profile() != 'honest-but-curious-server'"
+    finding: >
+      One or more `evidence_ref` entries on this card declare
+      `evidence_class: reproducible-record` while the threat profile is
+      stronger than `honest-but-curious-server`. Upgrade the evidence class on
+      the relevant artefacts (signed-record via JWS with WebID-DPoP; or
+      hash-chain-committed via the coordinator-side chain).
+    references:
+      - "Duddu et al. (CODASPY 2025) — Laminator, §3"
+      - "Boenisch et al. (EuroS&P 2023) — When the curious abandon honesty, §5"
+
+  - id: RISKCAL-006
+    name: "risk_calibration present but threat_profile absent"
+    category: RISKCAL
+    severity: RED
+    description: >
+      The risk_calibration block is present but `threat_profile` is missing.
+      Every empirical attack rate quoted on a card is calibrated against
+      exactly one adversary model, and the rule engine cannot evaluate any
+      RISKCAL-* rule without knowing which one. In schema 2.0 the
+      `threat_profile` field is required when `risk_calibration` exists.
+    condition_logic: "has_risk_calibration() and threat_profile() is None"
+    finding: >
+      Add `risk_calibration.threat_profile` to the card. Permitted values are
+      honest-but-curious-server, malicious-server, malicious-client,
+      malicious-coalition, external-only. The choice affects the operationally
+      meaningful epsilon star (Boenisch et al. 2023 §5 — shift of ~2x between
+      honest-but-curious and malicious-server).
+    references:
+      - "Boenisch et al. (EuroS&P 2023) — When the curious abandon honesty, §5"
+
+  # ─── CPSDEV — CPS/IoT device-specific assurance ────────────────────────────
+  # Added with the 2.0 schema for cards in CPS/IoT deployment contexts. Each
+  # rule's docstring carries the academic anchor that motivates it.
+
+  - id: CPSDEV-ATTEST-001
+    name: "TEE deployed without attestation evidence"
+    category: CPSDEV
+    severity: AMBER
+    description: >
+      A pet_component with `primitive_id: TEE` and `implementation_status:
+      deployed` should carry an `attestation_evidence` reference. A deployment
+      that claims a TEE without producing the attestation receipt is asserting
+      a security property without evidence. The receipt is the artefact that
+      lets an independent reviewer confirm the enclave was actually running
+      the code the deployment claims.
+    condition_logic: "has_primitive('TEE') and primitive_status('TEE') == 'deployed' and not tee_component_has_attestation()"
+    finding: >
+      A deployed TEE component lacks `attestation_evidence` on the card. Attach
+      a reference to the per-round attestation document (or to a sampled subset
+      for very long runs) with `evidence_class: signed-record` produced by the
+      TEE vendor's attestation service.
+    references:
+      - "Duddu et al. (CODASPY 2025) — Laminator, §3"
+      - "Guo et al. (arXiv:2412.10537 2024) — VerifiableFL, §3"
+      - "Trail of Bits (2024) — A few notes on AWS Nitro Enclaves"
+
+  - id: CPSDEV-DEVHET-001
+    name: "Heterogeneous device classes across stepwise chain"
+    category: CPSDEV
+    severity: AMBER
+    description: >
+      Device-class heterogeneity across a single deployment changes the
+      privacy surface in ways scalar (ε, δ) does not represent. Different
+      classes (hospital-server, edge-gateway, wearable-simulator) submit
+      updates with different update-magnitude statistics, which interact with
+      σ in non-obvious ways. When the chain mixes device classes, the
+      deployment should explicitly justify the choice and document any
+      class-specific calibration.
+    condition_logic: "len(set(device_classes())) >= 2"
+    finding: >
+      Two or more device classes are present in this deployment's
+      pet_components. Add a `parameter_notes` entry on each component
+      explaining the class-specific configuration (clipping, dropout, training
+      step budget) and confirm the measured_advantage was computed against the
+      mixed-class distribution rather than a single-class subset.
+    references:
+      - "Mo et al. (MobiSys 2020) — DarkneTZ, §5"
+      - "Gupta et al. (arXiv:2511.00037 2025) — Benchmarking FL frameworks, §4"
+
+  - id: CPSDEV-OTA-001
+    name: "Firmware-version provenance not declared"
+    category: CPSDEV
+    severity: INFO
+    description: >
+      A CPS/IoT deployment with heterogeneous edge devices should declare the
+      minimum firmware version it accepts at participation, and the chain
+      should fire RED when a device falls below it. The current schema has no
+      first-class field for firmware version on pet_components, so this rule
+      is informational only. Its presence is the argument that future
+      deployments should report firmware provenance — tee.fail (2024) and
+      adjacent work show that side channels concentrate in older silicon.
+    condition_logic: "has_device_class('edge-gateway') or has_device_class('wearable-simulator')"
+    finding: >
+      This deployment includes edge devices. The current schema does not carry
+      firmware-version metadata; consider adding `parameters.minimum_firmware`
+      to relevant pet_components and re-running this rule when firmware-version
+      fields land in the schema.
+    references:
+      - "tee.fail (2024) — DDR5 row-buffer timing side-channel, §3"
+
+  # ─── SDC — classical statistical disclosure control ────────────────────────
+  # SDC (data/primitives.yaml) is a legacy technique, not a modern PET: it has
+  # no formal privacy definition, so these rules check for the specific named
+  # rule-based artefacts (frequency rule, (n,k)-dominance/p%-rule, secondary
+  # suppression pattern) that stand in for an accountant here. SDC-006 exists
+  # specifically to keep the legacy/PET distinction visible at evaluation
+  # time, not just in prose: a card should not borrow DP's ε-shaped
+  # risk_calibration framing for a technique that has no ε to report.
+
+  - id: SDC-001
+    name: "SDC — frequency-rule threshold not declared"
+    category: SDC
+    severity: RED
+    description: >
+      The frequency rule (minimum cell/population size below which a cell is
+      suppressed) is the primary, and often only, falsifiable disclosure rule
+      SDC has. Without a declared threshold, there is nothing for a reviewer
+      to check the released table against — unlike DP, there is no accountant
+      to fall back on if this artefact is absent.
+    condition_logic: "has_primitive('SDC') and missing_artefact('frequency-rule')"
+    finding: >
+      SDC is present but no frequency-rule threshold is recorded. Document
+      the minimum cell/population size (e.g. "suppress any cell < 10
+      respondents") in required_artefacts before this release can be
+      reviewed. For magnitude tables, also declare the (n,k)-dominance or
+      p%-rule parameters (see data/primitives.yaml — SDC core_artefacts).
+    references:
+      - "Hundepool et al. (2012) — Statistical Disclosure Control (Wiley)"
+      - "Cox (1980) — Suppression methodology and statistical disclosure control"
+
+  - id: SDC-002
+    name: "SDC — secondary suppression pattern not documented"
+    category: SDC
+    severity: AMBER
+    description: >
+      A primary-suppressed cell can often be recovered by subtraction from a
+      row or column total, or from a second table sharing the same margins.
+      Secondary suppression closes this gap by suppressing additional cells —
+      but only if the pattern is actually computed and documented, not just
+      asserted.
+    condition_logic: "has_primitive('SDC') and missing_artefact('secondary suppression')"
+    finding: >
+      SDC is present but no secondary-suppression pattern is recorded. A
+      table with only primary suppression applied is vulnerable to disclosure
+      by subtraction. Document which additional cells were suppressed and
+      why, including whether the pattern accounts for other releases sharing
+      the same margins.
+    references:
+      - "Cox (1980) — Suppression methodology and statistical disclosure control"
+
+  - id: SDC-003
+    name: "SDC — no disclosure-risk evaluation"
+    category: SDC
+    severity: RED
+    description: >
+      Because SDC has no formal privacy definition, an empirical or
+      procedural disclosure-risk evaluation (singling-out test,
+      motivated-intruder simulation) is the only substantive evidence
+      available that the applied thresholds actually work for this release —
+      mirroring ASSUR-002's requirement for SYN, for the same underlying
+      reason.
+    condition_logic: "has_primitive('SDC') and missing_artefact('disclosure-risk')"
+    finding: >
+      SDC is present but no disclosure-risk evaluation artefact is recorded.
+      Applying a threshold rule is not itself evidence that the rule was
+      adequate for this specific table's shape and population. Document a
+      motivated-intruder simulation or singling-out test.
+    references:
+      - "Hundepool et al. (2012) — Statistical Disclosure Control (Wiley)"
+      - "Explorer T1 — SDC core_artefacts"
+
+  - id: SDC-004
+    name: "SDC applied without a governed output-checking layer"
+    category: SDC
+    severity: RED
+    description: >
+      In practice, SDC's assurance story is almost always paired with human
+      output review (P-09): an automated suppression/coarsening pipeline
+      running without a TRE-style governed check is exactly the setting in
+      which cross-release recovery (see SDC-002) goes uncaught, because no
+      reviewer is positioned to notice that this release, combined with a
+      prior one, narrows a suppressed cell.
+    condition_logic: "has_primitive('SDC') and not has_primitive('TRE')"
+    finding: >
+      SDC is present without TRE governance. Classical disclosure control
+      was built around human output checking as a first-class assurance
+      mechanism, not an optional supplement — consider adding TRE (P-09) or
+      documenting an equivalent output-clearance workflow.
+    references:
+      - "Explorer T2 — P-09 (SDC + TRE)"
+      - "ONS Safe Outputs guidance (2024)"
+
+  - id: SDC-005
+    name: "SDC protecting an AI/ML-model-derived release — re-validation not documented"
+    category: SDC
+    severity: AMBER
+    description: >
+      The frequency rule, (n,k)-dominance rule, and p%-rule were designed for
+      raw respondent tabulations, where cell counts are the only disclosure
+      surface. When the table being protected is itself derived from a
+      trained AI/ML model's outputs (a subgroup calibration table, a
+      fairness-audit breakdown, a validation-cohort summary), an additional
+      surface exists that these thresholds were not designed to bound: an
+      adversary with independent knowledge of the model's behaviour may be
+      able to narrow a coarsened or suppressed cell using that knowledge,
+      not just the published counts. This is genuinely open — the rule fires
+      to make the gap visible, not because a standard mitigation exists yet.
+    condition_logic: "has_primitive('SDC') and missing_artefact('model-derived')"
+    finding: >
+      SDC protects a release with no recorded re-validation of whether
+      classical thresholds bound disclosure risk for a model-derived table
+      specifically. If this release is not model-derived (e.g. a raw
+      demographic tabulation), mark this artefact `not-applicable` and state
+      why. If it is model-derived, document whatever testing exists — even a
+      documented absence of testing is more useful than silence — and treat
+      this as an open item, not a solved one.
+    references:
+      - "data/primitives.yaml — SDC maturity_notes"
+      - "Suri et al. (PoPETs 2023) — subject-level MIA in cross-silo FL (analogous surface for model-derived releases)"
+
+  - id: SDC-006
+    name: "SDC card carries a DP-shaped risk_calibration block"
+    category: SDC
+    severity: INFO
+    description: >
+      The `risk_calibration` block (design_target / accountant /
+      empirical_audit / measured_advantage) is built around DP's ε-accountant
+      framing. SDC has no formal privacy definition and therefore no ε to
+      report. A card that declares both SDC and a populated risk_calibration
+      block risks implying a DP-style guarantee SDC does not actually make —
+      exactly the legacy-technique-vs-PET conflation this framework is meant
+      to keep visible.
+    condition_logic: "has_primitive('SDC') and has_risk_calibration()"
+    finding: >
+      This card declares SDC alongside a populated `risk_calibration` block.
+      Confirm the block describes a genuine DP-family component elsewhere in
+      `pet_components` — if `risk_calibration` is being used to describe
+      SDC's own disclosure risk, that is a category error: document SDC's
+      evidence (frequency-rule threshold, disclosure-risk evaluation)
+      through `assurance_targets.required_artefacts` instead, and reserve
+      `risk_calibration` for a DP-family primitive.
+    references:
+      - "data/primitives.yaml — SDC trust_model"
+      - "GLOSSARY.md §4 — PET-family terms, note on classification fit"
