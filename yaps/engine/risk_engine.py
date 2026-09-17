@@ -3,6 +3,9 @@
 YAPS Risk Engine — evaluates a Privacy Card JSON against the YAPS rule set
 and produces a traffic-light risk report.
 
+Schema support: 2.0 (current). 1.0 / 1.1 / 1.2 cards are auto-migrated in
+memory before evaluation; use migrate_1_2_to_2_0.py for on-disk migration.
+
 Usage:
     python risk_engine.py <card.json> [--rules <rules.yaml>] [--output <report.md>] [--full]
 
@@ -10,6 +13,8 @@ Options:
     --rules     Path to rules.yaml (default: ../rules/rules.yaml relative to this script)
     --output    Write report to this Markdown file instead of stdout
     --full      Evaluate all rules even after a RED finding
+    --no-migrate  Refuse to evaluate non-2.0 cards (raises an error). Default is
+                  to auto-migrate 1.x cards in memory with a warning.
 
 Exit codes:
     0 — GREEN (no AMBER or RED findings)
@@ -182,9 +187,248 @@ def risk_calibration_field(card: dict, name: str):
     return rc.get(name)
 
 def attack_target_field(card: dict, name: str):
-    """Return a nested risk_calibration.attack_target.<name> value, or None."""
-    at = (card.get("risk_calibration") or {}).get("attack_target") or {}
+    """Return a nested risk_calibration.design_target.attack_target.<name> value,
+    or None. Reads the 2.0 path; 1.x cards are auto-migrated before evaluation
+    so this accessor sees the canonical 2.0 structure either way."""
+    dt = (card.get("risk_calibration") or {}).get("design_target") or {}
+    at = dt.get("attack_target") or {}
     return at.get(name)
+
+
+# ─── Schema 2.0 accessors ─────────────────────────────────────────────────────
+
+def card_schema_version(card: dict) -> str:
+    return card.get("schema_version", "1.0")
+
+def threat_profile(card: dict) -> str | None:
+    """The 2.0 risk_calibration.threat_profile field."""
+    return (card.get("risk_calibration") or {}).get("threat_profile")
+
+def design_target_field(card: dict, name: str):
+    """risk_calibration.design_target.<name> in 2.0."""
+    dt = (card.get("risk_calibration") or {}).get("design_target") or {}
+    return dt.get(name)
+
+def accountant_field(card: dict, name: str):
+    """risk_calibration.accountant.<name> in 2.0."""
+    ac = (card.get("risk_calibration") or {}).get("accountant") or {}
+    return ac.get(name)
+
+def empirical_audit_field(card: dict, name: str):
+    """risk_calibration.empirical_audit.<name> in 2.0."""
+    ea = (card.get("risk_calibration") or {}).get("empirical_audit") or {}
+    return ea.get(name)
+
+def measured_advantage_field(card: dict, name: str):
+    """risk_calibration.measured_advantage.<name> in 2.0."""
+    ma = (card.get("risk_calibration") or {}).get("measured_advantage") or {}
+    return ma.get(name)
+
+def measured_exceeds_target(card: dict) -> bool:
+    """True iff measured_advantage.value > design_target.attack_target.target_advantage."""
+    measured = measured_advantage_field(card, "value")
+    target = attack_target_field(card, "target_advantage")
+    if measured is None or target is None:
+        return False
+    try:
+        return float(measured) > float(target)
+    except (TypeError, ValueError):
+        return False
+
+def has_device_class(card: dict, dclass: str) -> bool:
+    """Any pet_components entry has the given device_class."""
+    return any(c.get("device_class") == dclass for c in card.get("pet_components", []))
+
+def device_classes(card: dict) -> list[str]:
+    return [c.get("device_class") for c in card.get("pet_components", []) if c.get("device_class")]
+
+def step_trust_zones(card: dict) -> list[str]:
+    return [s.get("trust_zone") for s in _steps(card) if s.get("trust_zone")]
+
+def tee_component_has_attestation(card: dict) -> bool:
+    """True iff every deployed TEE component carries attestation_evidence.
+    Returns True vacuously if there are no TEE components."""
+    tee_components = [c for c in card.get("pet_components", []) if c.get("primitive_id") == "TEE"]
+    deployed_tee = [c for c in tee_components if c.get("implementation_status") == "deployed"]
+    if not deployed_tee:
+        return True
+    return all(c.get("attestation_evidence") for c in deployed_tee)
+
+def evidence_class_of_artefact(card: dict, fragment: str) -> str | None:
+    """Find an artefact whose name contains `fragment` and return its evidence_class."""
+    fragment = fragment.lower()
+    for a in _artefact_list(card):
+        if fragment in a.get("artefact", "").lower():
+            ev = a.get("evidence") or {}
+            return ev.get("evidence_class")
+    return None
+
+def any_reproducible_only_evidence(card: dict) -> bool:
+    """True iff any required_artefact has evidence_class == 'reproducible-record'.
+    Drives RISKCAL-004 (silent rule that fires AMBER when the threat profile
+    indicates a stronger class is needed)."""
+    for a in _artefact_list(card):
+        ev = a.get("evidence") or {}
+        if ev.get("evidence_class") == "reproducible-record":
+            return True
+    return False
+
+def cps_subject_type(card: dict) -> str | None:
+    return (card.get("deployment_context") or {}).get("cps_subject_type")
+
+
+def dp_has_parameter_manifest(card: dict) -> bool:
+    """True if every DP-family pet_component carries the parameters that make
+    its DP claim auditable: epsilon (any synonym), delta, noise mechanism,
+    clipping norm.
+
+    Schema-2.0-native equivalent of the legacy ASSUR-003 'parameter manifest'
+    artefact check. Reads from pet_components[].parameters so that cards
+    don't need a separately-listed artefact entry to satisfy the rule.
+    """
+    dp_components = [
+        c for c in card.get("pet_components", [])
+        if c.get("primitive_id") in ("DP", "DP-L", "DP-C")
+    ]
+    if not dp_components:
+        return True   # Vacuously satisfied — no DP means no manifest required.
+
+    # Synonyms a card may use for epsilon. We tolerate either flat (epsilon)
+    # or qualified (epsilon_design_target) since both appear in the wild.
+    epsilon_keys = {"epsilon", "epsilon_design_target", "eps"}
+    delta_keys = {"delta"}
+    noise_keys = {"noise_mechanism", "noise"}
+    clip_keys = {"clipping_norm", "clip_norm", "c"}
+
+    def _has_any(d: dict, keys: set[str]) -> bool:
+        return any(k in d for k in keys)
+
+    for c in dp_components:
+        params = c.get("parameters") or {}
+        if not (
+            _has_any(params, epsilon_keys)
+            and _has_any(params, delta_keys)
+            and _has_any(params, noise_keys)
+            and _has_any(params, clip_keys)
+        ):
+            return False
+    return True
+
+
+# ─── 1.x → 2.0 in-memory migration ────────────────────────────────────────────
+
+def _migrate_card_1_2_to_2_0(card: dict) -> tuple[dict, list[str]]:
+    """In-memory migration of a 1.x card to the 2.0 structure. Returns a tuple
+    (migrated_card, warnings). Idempotent for 2.0 cards (returns them unchanged
+    with no warnings).
+
+    The migration is conservative: it adds the new required fields with safe
+    defaults, restructures risk_calibration if present, wraps bare evidence_ref
+    strings in evidence_reference objects, and leaves everything else alone.
+
+    Migration policy decisions (documented in MIGRATION_NOTES.md):
+      * Default evidence_class for any wrapped bare string: 'reproducible-record'.
+        This is the "silent default" — RISKCAL-004 fires AMBER if the threat
+        profile demands stronger.
+      * Default threat_profile when risk_calibration is present but the field
+        is absent: 'honest-but-curious-server'. This is the most common case
+        in the FL literature [Carlini 2022 §6; Boenisch 2023 §5].
+      * 'MIA' is widened to 'MIA-per-record' (the 1.2 default semantics).
+    """
+    version = card.get("schema_version", "1.0")
+    if version == "2.0":
+        return card, []
+
+    import copy
+    migrated = copy.deepcopy(card)
+    warnings: list[str] = []
+
+    # 1) bump schema_version
+    migrated["schema_version"] = "2.0"
+    warnings.append(f"schema_version: {version} → 2.0 (in-memory)")
+
+    # 2) restructure risk_calibration if present
+    rc = migrated.get("risk_calibration")
+    if rc:
+        new_rc: dict = {}
+
+        # 2.0 makes threat_profile required.
+        new_rc["threat_profile"] = "honest-but-curious-server"
+        warnings.append("risk_calibration.threat_profile defaulted to 'honest-but-curious-server'")
+
+        # 2a) design_target — pull from 1.x flat fields
+        design_target: dict = {}
+        if rc.get("mu_dp") is not None:
+            design_target["mu_dp"] = rc["mu_dp"]
+        old_at = rc.get("attack_target") or {}
+        if old_at:
+            at = {}
+            attack = old_at.get("attack")
+            if attack == "MIA":
+                at["attack"] = "MIA-per-record"
+                warnings.append("risk_calibration.attack_target.attack: 'MIA' → 'MIA-per-record'")
+            elif attack:
+                at["attack"] = attack
+            for k in ("target_advantage", "target_fpr", "target_fnr"):
+                if old_at.get(k) is not None:
+                    at[k] = old_at[k]
+            if at:
+                design_target["attack_target"] = at
+        if design_target:
+            new_rc["design_target"] = design_target
+
+        # 2b) accountant — 1.x had no formal block; if old measured fields existed under attack_target.measured_*, leave them be (engine reads new path; 1.2's measured_epsilon-style fields were card-author conventions, not schema)
+        # We don't try to fabricate accountant from nothing.
+
+        # 2c) measured_advantage — pull from old attack_target.measured_advantage and evidence_ref
+        if old_at.get("measured_advantage") is not None or old_at.get("evidence_ref"):
+            ma: dict = {}
+            if old_at.get("measured_advantage") is not None:
+                ma["value"] = old_at["measured_advantage"]
+            ma["attack_method"] = "other"   # unknown in 1.x; reviewer fills in
+            if old_at.get("evidence_ref"):
+                ma["evidence"] = {
+                    "location": old_at["evidence_ref"],
+                    "evidence_class": "reproducible-record",
+                }
+                warnings.append(f"measured_advantage.evidence wrapped from bare string ('{old_at['evidence_ref']}')")
+            new_rc["measured_advantage"] = ma
+
+        # 2d) trade_off_curve — wrap bare string
+        if rc.get("trade_off_curve_ref"):
+            new_rc["trade_off_curve"] = {
+                "location": rc["trade_off_curve_ref"],
+                "evidence_class": "reproducible-record",
+            }
+
+        # 2e) pass-through scalars
+        for k in ("operational_interpretation", "source_library", "notes"):
+            if rc.get(k):
+                new_rc[k] = rc[k]
+
+        migrated["risk_calibration"] = new_rc
+
+    # 3) assurance_targets.required_artefacts: wrap bare 'location' strings into 'evidence'
+    artefacts = (migrated.get("assurance_targets") or {}).get("required_artefacts") or []
+    for a in artefacts:
+        if a.get("status") in ("exists",) and "evidence" not in a and a.get("location"):
+            a["evidence"] = {
+                "location": a["location"],
+                "evidence_class": "reproducible-record",
+            }
+            # leave the legacy 'location' in place for forward-compat readers; the
+            # JSON schema 2.0 will reject this as additionalProperties: false on a
+            # strict validator, so on-disk migration via migrate_1_2_to_2_0.py
+            # strips the legacy field.
+        a.pop("notes", None) if a.get("notes") in (None, "") else None
+
+    # 4) Default missing cps_subject_type when sector_ref is healthcare and stack hints at FL
+    dc = migrated.get("deployment_context") or {}
+    if dc.get("sector_ref") == "healthcare" and not dc.get("cps_subject_type"):
+        # We don't autoset — that's a card-author decision. Just warn.
+        warnings.append("deployment_context.cps_subject_type is absent; consider setting (e.g. 'patient'). Rule CPSDEV-* relies on this.")
+
+    return migrated, warnings
 
 def _artefact_list(card: dict) -> list[dict]:
     return card.get("assurance_targets", {}).get("required_artefacts", [])
@@ -253,12 +497,30 @@ def _build_eval_context(card: dict) -> dict:
         "is_cross_jurisdictional": lambda: is_cross_jurisdictional(card),
         # schema 1.1 — framework alignment
         "aligns_to_framework":   lambda name: aligns_to_framework(card, name),
-        # schema 1.2 — risk calibration block
+        # schema 1.2 — risk calibration block (path updated for 2.0)
         "has_risk_calibration":     lambda: has_risk_calibration(card),
         "risk_calibration_field":   lambda name: risk_calibration_field(card, name),
         "attack_target_field":      lambda name: attack_target_field(card, name),
-        # allow len() in conditions
+        # schema 2.0 — three-ε quantities, threat profile, device/zone fields
+        "card_schema_version":      lambda: card_schema_version(card),
+        "threat_profile":           lambda: threat_profile(card),
+        "design_target_field":      lambda name: design_target_field(card, name),
+        "accountant_field":         lambda name: accountant_field(card, name),
+        "empirical_audit_field":    lambda name: empirical_audit_field(card, name),
+        "measured_advantage_field": lambda name: measured_advantage_field(card, name),
+        "measured_exceeds_target":  lambda: measured_exceeds_target(card),
+        "has_device_class":         lambda dc: has_device_class(card, dc),
+        "device_classes":           lambda: device_classes(card),
+        "step_trust_zones":         lambda: step_trust_zones(card),
+        "tee_component_has_attestation": lambda: tee_component_has_attestation(card),
+        "evidence_class_of_artefact":    lambda f: evidence_class_of_artefact(card, f),
+        "any_reproducible_only_evidence": lambda: any_reproducible_only_evidence(card),
+        "cps_subject_type":         lambda: cps_subject_type(card),
+        "dp_has_parameter_manifest": lambda: dp_has_parameter_manifest(card),
+        # allow len(), set(), list() in conditions
         "len": len,
+        "set": set,
+        "list": list,
         # allow card dict traversal in condition_logic
         "governance_controls": card.get("governance_controls", {}),
         "True": True, "False": False,
@@ -490,6 +752,11 @@ def main():
         action="store_true",
         help="Evaluate all rules even after RED finding",
     )
+    parser.add_argument(
+        "--no-migrate",
+        action="store_true",
+        help="Refuse to evaluate cards with schema_version != '2.0' (default: auto-migrate 1.x in memory)",
+    )
     args = parser.parse_args()
 
     # ── Load card ──
@@ -503,6 +770,21 @@ def main():
     except json.JSONDecodeError as e:
         print(f"ERROR: Invalid JSON in card file: {e}", file=sys.stderr)
         sys.exit(3)
+
+    # ── Migrate if 1.x ──
+    card_version = card.get("schema_version", "1.0")
+    if card_version != "2.0":
+        if args.no_migrate:
+            print(
+                f"ERROR: Card schema_version is '{card_version}', not '2.0'. "
+                f"Re-run without --no-migrate, or migrate the file on disk with "
+                f"migrate_1_2_to_2_0.py.",
+                file=sys.stderr,
+            )
+            sys.exit(3)
+        card, migration_warnings = _migrate_card_1_2_to_2_0(card)
+        for w in migration_warnings:
+            print(f"[migrate] {w}", file=sys.stderr)
 
     # ── Load rules ──
     if args.rules:

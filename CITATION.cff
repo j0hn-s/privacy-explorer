@@ -49,3 +49,17 @@ preferred-citation:
     The Privacy Explorer repository is the companion artefact to the survey
     paper "Survey of PETs Adoption in Real-World Applications" (Smith, 2026).
     Please cite both the repository and the survey when using these materials.
+references:
+  - type: article
+    title: "Beyond scalar epsilon: stepwise privacy cards for federated learning"
+    authors:
+      - family-names: Smith
+        given-names: John
+        affiliation: Newton Europe
+    year: 2026
+    conference:
+      name: "4th International Conference on Federated Learning Technologies and Applications (FLTA)"
+    notes: >
+      Empirical validation of the privacy card concept and the stepwise-from-private
+      methodology introduced in this repository. Companion evaluation harness at
+      https://github.com/j0hn-s/stepwise-privacy-cards.

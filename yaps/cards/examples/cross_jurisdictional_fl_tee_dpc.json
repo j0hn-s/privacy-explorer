@@ -1,28 +1,39 @@
 {
   "card_id": "CARD-cross-jur-fl-tee-dpc-202605",
-  "schema_version": "1.2",
+  "schema_version": "2.0",
   "title": "Cross-jurisdictional federated survival analysis — FL + TEE + DP-C (S-01 pattern, EP-11)",
   "description": "A worked example demonstrating the stepwise-from-private construction methodology applied to a cross-jurisdictional cancer-research deployment. Inspired by the architectural pattern described in GDS (2025) for UK-US federated survival analysis. Patient-level data never leaves jurisdiction; aggregation runs in a hardware-isolated enclave in a third jurisdiction; central DP bounds the released hazard-ratio estimates.",
   "created": "2026-05-25",
   "last_updated": "2026-05-25",
   "status": "review",
-  "authors": ["Privacy Explorer — exemplar card"],
-
+  "authors": [
+    "Privacy Explorer — exemplar card"
+  ],
   "architecture_pattern": {
     "stack_ref": "S-01",
     "custom": false
   },
-
-  "exposure_problem_refs": ["EP-11", "EP-04", "EP-03", "EP-01"],
-
+  "exposure_problem_refs": [
+    "EP-11",
+    "EP-04",
+    "EP-03",
+    "EP-01"
+  ],
   "jurisdictional_context": {
-    "data_subjects": ["UK", "US"],
-    "controllers": ["UK", "US"],
-    "operators": ["UK"],
+    "data_subjects": [
+      "UK",
+      "US"
+    ],
+    "controllers": [
+      "UK",
+      "US"
+    ],
+    "operators": [
+      "UK"
+    ],
     "cross_border_mechanism": "UK Information Commissioner's Office IDTA + US institutional DUA; HIPAA Business Associate Agreement for US-side participant institutions; HRA approval for UK-side data flow",
     "notes": "Patient records never move out of jurisdiction. Only DP-bounded aggregates leave the enclave. The cross-border mechanism governs movement of attestation, parameter manifests, and the released model — not raw records."
   },
-
   "pet_components": [
     {
       "primitive_id": "FL",
@@ -76,7 +87,7 @@
       ],
       "parameters": {
         "epsilon": 2.0,
-        "delta": 1e-6,
+        "delta": 1e-06,
         "noise_mechanism": "Gaussian",
         "clipping_norm": 0.5,
         "accounting_method": "PRV"
@@ -84,7 +95,6 @@
       "parameter_notes": "ε=2.0 chosen for cross-jurisdictional review acceptability. PRV accountant for tighter composition across 60 rounds vs RDP."
     }
   ],
-
   "trust_model": {
     "summary": "UK and US institutions are semi-trusted data holders bound by institutional agreements. Aggregation operator (UK cloud region) is honest-but-curious at host OS level; TEE isolates the aggregation. Released model and parameter manifests cross jurisdictions under IDTA/DUA; DP bounds individual-level leakage from the model.",
     "threat_actors": [
@@ -119,61 +129,90 @@
       "Re-identification via genomic linkage (data scope excludes genomic variables)"
     ]
   },
-
   "assurance_targets": {
     "required_artefacts": [
       {
         "artefact": "attestation report and enclave measurement (TEE layer)",
         "status": "exists",
-        "location": "internal/attestation/per-round/",
-        "notes": "Per-round attestation. Hash pinned at round start; mismatch aborts the round."
+        "notes": "Per-round attestation. Hash pinned at round start; mismatch aborts the round.",
+        "evidence": {
+          "location": "internal/attestation/per-round/",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "privacy accountant and parameter manifest (DP-C layer)",
         "status": "exists",
-        "location": "internal/dp/prv_accountant.log",
-        "notes": "PRV accountant; ε=2.0 budget tracked across all 60 rounds"
+        "notes": "PRV accountant; ε=2.0 budget tracked across all 60 rounds",
+        "evidence": {
+          "location": "internal/dp/prv_accountant.log",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "training protocol and aggregation specification (FL layer)",
         "status": "exists",
-        "location": "internal/protocol/fl_survival_v1.pdf"
+        "evidence": {
+          "location": "internal/protocol/fl_survival_v1.pdf",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "composition theorem declaration",
         "status": "exists",
-        "location": "internal/dp/composition_assumption.md"
+        "evidence": {
+          "location": "internal/dp/composition_assumption.md",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "side-channel mitigation declaration for the aggregation enclave",
         "status": "exists",
-        "location": "internal/tee/side_channel_posture.md"
+        "evidence": {
+          "location": "internal/tee/side_channel_posture.md",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "cross-border mechanism documentation (IDTA + DUA)",
         "status": "exists",
-        "location": "legal/cross_border/idta_dua_v3.pdf"
+        "evidence": {
+          "location": "legal/cross_border/idta_dua_v3.pdf",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "DPIA reference (UK)",
         "status": "exists",
-        "location": "DPIA-UKSURV-2026-008"
+        "evidence": {
+          "location": "DPIA-UKSURV-2026-008",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "HRA approval (UK side)",
         "status": "exists",
-        "location": "HRA-IRAS-2026-XXXX"
+        "evidence": {
+          "location": "HRA-IRAS-2026-XXXX",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "IRB approval (US side)",
         "status": "exists",
-        "location": "US-IRB-2026-XXXX"
+        "evidence": {
+          "location": "US-IRB-2026-XXXX",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "output clearance log",
         "status": "exists",
-        "location": "internal/release/clearance_log.csv",
-        "notes": "Joint UK-US clearance for each release"
+        "notes": "Joint UK-US clearance for each release",
+        "evidence": {
+          "location": "internal/release/clearance_log.csv",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "per-record vulnerability sweep (MIA) report",
@@ -184,7 +223,6 @@
     "current_maturity_stage": 3,
     "maturity_justification": "Repeatable; documented; full assurance artefact set; cross-jurisdictional sign-off complete. Stage 4 (audit-ready) blocked pending per-record MIA sweep evidence and external review of the cross-jurisdictional governance package."
   },
-
   "governance_controls": {
     "output_control": "both",
     "access_control": "Institutional DUAs (UK NHS, US AMC); IDTA for transfer of model and manifests; researcher accreditation under both UK and US regimes",
@@ -212,26 +250,36 @@
       }
     ]
   },
-
   "deployment_context": {
     "sector_ref": "healthcare",
     "sub_sector": "cross-jurisdictional cancer survival analysis",
-    "data_subjects_jurisdiction": ["UK", "US"],
+    "data_subjects_jurisdiction": [
+      "UK",
+      "US"
+    ],
     "scale": "limited-production"
   },
-
   "regulatory_context": {
     "applicable_regulations": [
       {
         "regulation": "UK GDPR",
         "jurisdiction": "UK",
-        "relevant_articles": ["Art. 9 (special category — health)", "Art. 25", "Art. 35", "Art. 46 (transfers)"],
+        "relevant_articles": [
+          "Art. 9 (special category — health)",
+          "Art. 25",
+          "Art. 35",
+          "Art. 46 (transfers)"
+        ],
         "alignment_status": "aligned"
       },
       {
         "regulation": "HIPAA",
         "jurisdiction": "US",
-        "relevant_articles": ["Privacy Rule (de-identification)", "Security Rule", "BAA requirements"],
+        "relevant_articles": [
+          "Privacy Rule (de-identification)",
+          "Security Rule",
+          "BAA requirements"
+        ],
         "alignment_status": "partial"
       },
       {
@@ -253,29 +301,33 @@
       }
     ]
   },
-
   "tooling_candidates": [
     {
       "name": "NVIDIA FLARE",
       "url": "https://nvflare.readthedocs.io/",
-      "primitive_ids": ["FL"],
+      "primitive_ids": [
+        "FL"
+      ],
       "maturity": "production"
     },
     {
       "name": "AWS Nitro Enclaves",
       "url": "https://aws.amazon.com/ec2/nitro/nitro-enclaves/",
-      "primitive_ids": ["TEE"],
+      "primitive_ids": [
+        "TEE"
+      ],
       "maturity": "production"
     },
     {
       "name": "Google dp_accounting",
       "url": "https://github.com/google/differential-privacy/tree/main/python/dp_accounting",
-      "primitive_ids": ["DP-C"],
+      "primitive_ids": [
+        "DP-C"
+      ],
       "maturity": "production",
       "notes": "PRV accountant used for tight composition tracking"
     }
   ],
-
   "residual_risks": [
     {
       "risk": "Coordinator inside the enclave still sees individual DP-noised updates before summation — TEE does not provide MPC-grade isolation of individual contributions",
@@ -293,7 +345,6 @@
       "mitigation_path": "Bilateral sponsor governance maintains current alignment; documented cross-jurisdictional review minutes"
     }
   ],
-
   "utility_evidence": {
     "primary_metric": "C-index (concordance) on the joint survival model",
     "baseline_value": 0.79,
@@ -301,7 +352,6 @@
     "unit": "C-index",
     "notes": "5-point degradation at ε=2.0 vs non-private centralised baseline. Acceptable per bilateral clinical governance assessment for this exploratory phase."
   },
-
   "stepwise_chain": [
     {
       "step": 0,
@@ -354,7 +404,6 @@
       "residual_risk": "Divergent regulator interpretation across jurisdictions remains a non-technical residual; future tightening of either regime may require renegotiation. The per-record MIA sweep is committed but not yet delivered — until then the worst-case disclosure for outlier patients is unmeasured."
     }
   ],
-
   "change_log": [
     {
       "date": "2026-05-25",
@@ -367,17 +416,27 @@
       "author": "Privacy Explorer"
     }
   ],
-
   "risk_calibration": {
-    "mu_dp": 0.78,
-    "attack_target": {
-      "attack": "MIA",
-      "target_advantage": 0.024,
-      "target_fpr": 0.001,
-      "evidence_ref": "privacy-eval/results/mia/per_record/ (sweep commissioned; not yet delivered)"
+    "threat_profile": "honest-but-curious-server",
+    "design_target": {
+      "mu_dp": 0.78,
+      "attack_target": {
+        "attack": "MIA-per-record",
+        "target_advantage": 0.024,
+        "target_fpr": 0.001
+      }
     },
-    "conversion_regret": 0.006,
-    "trade_off_curve_ref": "internal/dp/curves/fl_survival_round60_fpr_fnr.csv",
+    "measured_advantage": {
+      "attack_method": "other",
+      "evidence": {
+        "location": "privacy-eval/results/mia/per_record/ (sweep commissioned; not yet delivered)",
+        "evidence_class": "reproducible-record"
+      }
+    },
+    "trade_off_curve": {
+      "location": "internal/dp/curves/fl_survival_round60_fpr_fnr.csv",
+      "evidence_class": "reproducible-record"
+    },
     "operational_interpretation": "Worst-record membership inference at FPR=0.001 is bounded at TPR ≤ ~0.025 under the declared composition assumption — roughly 25× the chance baseline. This is the operationally relevant statement for cross-jurisdictional review, alongside the raw ε=2.0 / δ=1e-6.",
     "source_library": "gdpnum",
     "notes": "μ-DP derived from ε=2.0, δ=1e-6 via gdpnum at the FPR=0.001 operating point. Regret of 0.006 is within the Desfontaines-recommended ≤0.01 threshold, so μ-DP alone is a faithful summary at this operating point. Curve attached as defence-in-depth and to support stretch reviewers."

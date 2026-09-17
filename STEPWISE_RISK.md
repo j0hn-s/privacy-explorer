@@ -111,6 +111,12 @@ These are the four questions the framework is built to support.
 
 ---
 
+## Empirical validation
+
+The stepwise-from-private methodology has been worked through end-to-end on a real FL deployment in the FLTA 2026 short paper *Beyond scalar epsilon: stepwise privacy cards for federated learning* — see the [stepwise-privacy-cards](https://github.com/j0hn-s/stepwise-privacy-cards) companion repository (sibling checkout: `../stepwise-privacy-cards/`). The companion contains a worked card whose four-step chain (FL + DP-C + TEE on Solid-hosted BloodMNIST) is calibrated against measured attack rates from a per-record membership inference attack (LiRA) and a gradient inversion attack; each step's accepted residual is bound to a result record under the audit-trail discipline. The companion is the operational form of the methodology described here.
+
+---
+
 ## How this addresses the DPIA critique
 
 The DPIA critique was: if the risk is unknown, the mitigation cannot be effective. The stepwise approach inverts the structure:

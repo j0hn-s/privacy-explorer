@@ -1,18 +1,18 @@
 {
   "card_id": "CARD-public-sector-tre-dp-202605",
-  "schema_version": "1.1",
+  "schema_version": "2.0",
   "title": "Public Sector Governed Analytics — TRE + DP-C (P-07 pattern)",
   "description": "Accredited research access to sensitive administrative data within a Trusted Research Environment, with differential privacy applied at the statistical output release stage. Follows the ONS Secure Research Service / ADR UK pattern.",
   "created": "2026-05-01",
   "last_updated": "2026-05-01",
   "status": "approved",
-  "authors": ["Privacy Explorer — example card"],
-
+  "authors": [
+    "Privacy Explorer — example card"
+  ],
   "architecture_pattern": {
     "pairing_ref": "P-07",
     "custom": false
   },
-
   "pet_components": [
     {
       "primitive_id": "TRE",
@@ -58,7 +58,6 @@
       "parameter_notes": "Pure DP (δ=0) chosen to maximise legal defensibility for statistical releases. ε=1.0 per query; total release budget governed by release policy. Parameter policy agreed with legal and statistical governance leads."
     }
   ],
-
   "trust_model": {
     "summary": "Data subjects are the general public — census respondents, admin data subjects. Approved researchers are trusted to operate within project scope under DUA. ONS infrastructure is trusted. TRE governance is the primary accountability mechanism; DP provides a mathematical second factor on statistical outputs.",
     "threat_actors": [
@@ -80,30 +79,41 @@
       "Supply-chain attacks on approved DP tooling"
     ]
   },
-
   "assurance_targets": {
     "required_artefacts": [
       {
         "artefact": "output clearance workflow and decision log (TRE layer)",
         "status": "exists",
-        "location": "SRS output checking team — internal records system",
-        "notes": "All outputs cleared by named ONS output checker; decision rationale recorded"
+        "notes": "All outputs cleared by named ONS output checker; decision rationale recorded",
+        "evidence": {
+          "location": "SRS output checking team — internal records system",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "DP accountant and parameter manifest (DP layer)",
         "status": "exists",
-        "location": "internal/dp/release_budget_tracker.xlsx",
-        "notes": "Sequential composition budget tracked per project; release policy sets maximum total epsilon"
+        "notes": "Sequential composition budget tracked per project; release policy sets maximum total epsilon",
+        "evidence": {
+          "location": "internal/dp/release_budget_tracker.xlsx",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "release policy documentation",
         "status": "exists",
-        "location": "https://www.ons.gov.uk/aboutus/whatwedo/statistics/requestingstatistics/approvedresearcherscheme/safeoutputslearningpath"
+        "evidence": {
+          "location": "https://www.ons.gov.uk/aboutus/whatwedo/statistics/requestingstatistics/approvedresearcherscheme/safeoutputslearningpath",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "access and project approval audit records",
         "status": "exists",
-        "location": "ONS UKSA accreditation and project approval records"
+        "evidence": {
+          "location": "ONS UKSA accreditation and project approval records",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "composition assumptions (sequential, parallel, advanced)",
@@ -114,7 +124,6 @@
     "current_maturity_stage": 4,
     "maturity_justification": "TRE + DP is operationalised with maintained change-control logs, third-party auditable artefacts, and a formal release policy. Full audit-readiness achieved where both layers produce maintained artefact sets."
   },
-
   "governance_controls": {
     "output_control": "both",
     "access_control": "Five Safes accreditation — safe people (approved researcher status), safe projects (project scope DUA), safe data (de-identified linkage), safe settings (TRE desktop), safe outputs (human output checking)",
@@ -138,27 +147,33 @@
       }
     ]
   },
-
   "deployment_context": {
     "sector_ref": "public_sector",
     "sub_sector": "official statistics and accredited administrative data research",
-    "data_subjects_jurisdiction": ["UK"],
+    "data_subjects_jurisdiction": [
+      "UK"
+    ],
     "scale": "production"
   },
-
   "regulatory_context": {
     "applicable_regulations": [
       {
         "regulation": "UK GDPR",
         "jurisdiction": "UK",
-        "relevant_articles": ["Art. 25 (data protection by design)", "Art. 35 (DPIA)", "Art. 89 (research exemptions)"],
+        "relevant_articles": [
+          "Art. 25 (data protection by design)",
+          "Art. 35 (DPIA)",
+          "Art. 89 (research exemptions)"
+        ],
         "alignment_status": "aligned",
         "gap_notes": "Art. 89 research exemption and statistical purpose basis documented"
       },
       {
         "regulation": "Digital Economy Act 2017",
         "jurisdiction": "UK",
-        "relevant_articles": ["Part 5 — data sharing for research and statistics"],
+        "relevant_articles": [
+          "Part 5 — data sharing for research and statistics"
+        ],
         "alignment_status": "aligned"
       }
     ],
@@ -183,30 +198,34 @@
       }
     ]
   },
-
   "tooling_candidates": [
     {
       "name": "OpenDP",
       "url": "https://opendp.org/",
-      "primitive_ids": ["DP-C"],
+      "primitive_ids": [
+        "DP-C"
+      ],
       "maturity": "production",
       "notes": "Reference implementation for DP statistics; used in academic and public sector settings"
     },
     {
       "name": "Google Differential Privacy library (Go/Java/C++/Python)",
       "url": "https://github.com/google/differential-privacy",
-      "primitive_ids": ["DP-C"],
+      "primitive_ids": [
+        "DP-C"
+      ],
       "maturity": "production"
     },
     {
       "name": "Tumult Analytics",
       "url": "https://tmlt.io/",
-      "primitive_ids": ["DP-C"],
+      "primitive_ids": [
+        "DP-C"
+      ],
       "maturity": "production",
       "notes": "Used by U.S. Census Bureau DAS; strong composition accounting support"
     }
   ],
-
   "residual_risks": [
     {
       "risk": "Legal sufficiency of DP evidence varies by jurisdiction and regulatory context; ε=1.0 is not universally accepted as 'anonymisation' under data protection law",
@@ -219,7 +238,6 @@
       "mitigation_path": "Human output checking provides defence-in-depth; future: TAPAS-style adversarial audit of released outputs"
     }
   ],
-
   "change_log": [
     {
       "date": "2026-05-01",
@@ -232,17 +250,25 @@
       "author": "Privacy Explorer"
     }
   ],
-
-  "exposure_problem_refs": ["EP-06", "EP-01", "EP-09", "EP-08"],
-
+  "exposure_problem_refs": [
+    "EP-06",
+    "EP-01",
+    "EP-09",
+    "EP-08"
+  ],
   "jurisdictional_context": {
-    "data_subjects": ["UK"],
-    "controllers": ["UK"],
-    "operators": ["UK"],
+    "data_subjects": [
+      "UK"
+    ],
+    "controllers": [
+      "UK"
+    ],
+    "operators": [
+      "UK"
+    ],
     "cross_border_mechanism": "none required — UK-only data subjects, controller, and operator",
     "notes": "Single-jurisdiction deployment within the UK statistical system."
   },
-
   "stepwise_chain": [
     {
       "step": 0,

@@ -1,18 +1,18 @@
 {
   "card_id": "CARD-finance-tee-mpc-202605",
-  "schema_version": "1.1",
+  "schema_version": "2.0",
   "title": "Cross-Bank Analytics — TEE + MPC (P-05 pattern)",
   "description": "Collaborative fraud detection or credit scoring across multiple financial institutions, using hardware isolation (TEE) to host the MPC computation. Neither institution shares raw transaction data; the TEE hosts the MPC protocol execution and provides hardware-enforced confidentiality alongside cryptographic correctness guarantees.",
   "created": "2026-05-01",
   "last_updated": "2026-05-01",
   "status": "draft",
-  "authors": ["Privacy Explorer — example card"],
-
+  "authors": [
+    "Privacy Explorer — example card"
+  ],
   "architecture_pattern": {
     "pairing_ref": "P-05",
     "custom": false
   },
-
   "pet_components": [
     {
       "primitive_id": "TEE",
@@ -63,7 +63,6 @@
       "parameter_notes": "SPDZ2k chosen for integer-native arithmetic suited to transaction data. Malicious adversary extension (MAC-based) under evaluation but adds overhead. Three-party threshold with 1-corruption assumption matches the inter-bank trust model."
     }
   ],
-
   "trust_model": {
     "summary": "Three participating banks, each holding sensitive transaction records. The TEE coordinator is operated by a neutral cloud infrastructure provider. Each bank is modelled as honest-but-curious — they will follow the protocol but may attempt to learn more from outputs. No single bank is trusted with another's raw data. The MPC protocol guarantees that only the agreed joint output is learned; the TEE provides hardware-enforced confidentiality of the coordinator's computation.",
     "threat_actors": [
@@ -92,7 +91,6 @@
       "Side-channel attacks at the network layer (timing, traffic analysis)"
     ]
   },
-
   "assurance_targets": {
     "required_artefacts": [
       {
@@ -103,13 +101,19 @@
       {
         "artefact": "adversary model declaration (MPC layer)",
         "status": "exists",
-        "location": "internal/mpc/adversary_model_v1.pdf",
-        "notes": "Honest-but-curious majority; three-party, one-corruption threshold. Malicious extension documented as future work."
+        "notes": "Honest-but-curious majority; three-party, one-corruption threshold. Malicious extension documented as future work.",
+        "evidence": {
+          "location": "internal/mpc/adversary_model_v1.pdf",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "MPC protocol specification",
         "status": "exists",
-        "location": "internal/mpc/protocol_spec_spdz2k.pdf"
+        "evidence": {
+          "location": "internal/mpc/protocol_spec_spdz2k.pdf",
+          "evidence_class": "reproducible-record"
+        }
       },
       {
         "artefact": "implementation audit (MPC and TEE layers)",
@@ -124,13 +128,15 @@
       {
         "artefact": "side-channel mitigation declaration for the aggregation enclave",
         "status": "exists",
-        "location": "internal/tee/side_channel_declaration.md"
+        "evidence": {
+          "location": "internal/tee/side_channel_declaration.md",
+          "evidence_class": "reproducible-record"
+        }
       }
     ],
     "current_maturity_stage": 2,
     "maturity_justification": "Protocol specified and adversary model declared (Stage 2 threshold met). Stage 3 blocked by absence of third-party implementation audit and formal benchmark documentation."
   },
-
   "governance_controls": {
     "output_control": "automated-statistical",
     "access_control": "Three-party joint governance committee; protocol initiation requires agreement from all three participating banks; output release requires joint sign-off",
@@ -144,27 +150,36 @@
       }
     ]
   },
-
   "deployment_context": {
     "sector_ref": "finance",
     "sub_sector": "cross-institutional fraud detection and credit risk analytics",
-    "data_subjects_jurisdiction": ["UK", "EU"],
+    "data_subjects_jurisdiction": [
+      "UK",
+      "EU"
+    ],
     "scale": "pilot"
   },
-
   "regulatory_context": {
     "applicable_regulations": [
       {
         "regulation": "UK GDPR",
         "jurisdiction": "UK",
-        "relevant_articles": ["Art. 25 (data protection by design)", "Art. 26 (joint controllers)", "Art. 35 (DPIA)"],
+        "relevant_articles": [
+          "Art. 25 (data protection by design)",
+          "Art. 26 (joint controllers)",
+          "Art. 35 (DPIA)"
+        ],
         "alignment_status": "partial",
         "gap_notes": "Joint controller agreement under Art. 26 required between participating banks; in drafting"
       },
       {
         "regulation": "EU GDPR",
         "jurisdiction": "EU",
-        "relevant_articles": ["Art. 25", "Art. 26", "Art. 35"],
+        "relevant_articles": [
+          "Art. 25",
+          "Art. 26",
+          "Art. 35"
+        ],
         "alignment_status": "not-assessed"
       }
     ],
@@ -176,44 +191,52 @@
       }
     ]
   },
-
   "tooling_candidates": [
     {
       "name": "MP-SPDZ",
       "url": "https://github.com/data61/MP-SPDZ",
-      "primitive_ids": ["MPC"],
+      "primitive_ids": [
+        "MPC"
+      ],
       "maturity": "production",
       "notes": "Leading academic-to-production MPC framework; SPDZ2k, semi-honest and malicious variants"
     },
     {
       "name": "CrypTen",
       "url": "https://github.com/facebookresearch/CrypTen",
-      "primitive_ids": ["MPC"],
+      "primitive_ids": [
+        "MPC"
+      ],
       "maturity": "production",
       "notes": "PyTorch-based MPC; easier integration with ML pipelines"
     },
     {
       "name": "MOTION",
       "url": "https://github.com/encryptogroup/MOTION",
-      "primitive_ids": ["MPC"],
+      "primitive_ids": [
+        "MPC"
+      ],
       "maturity": "experimental",
       "notes": "High-performance MPC framework; good for benchmarking"
     },
     {
       "name": "Azure Confidential Computing",
       "url": "https://azure.microsoft.com/en-us/solutions/confidential-compute/",
-      "primitive_ids": ["TEE"],
+      "primitive_ids": [
+        "TEE"
+      ],
       "maturity": "production"
     },
     {
       "name": "Gramine (Graphene-SGX successor)",
       "url": "https://gramineproject.io/",
-      "primitive_ids": ["TEE"],
+      "primitive_ids": [
+        "TEE"
+      ],
       "maturity": "production",
       "notes": "Enables running unmodified Linux applications inside Intel SGX or AMD SEV enclaves"
     }
   ],
-
   "residual_risks": [
     {
       "risk": "Honest-but-curious adversary model does not cover malicious deviation by a participating bank; an actively corrupted party could deviate from the protocol",
@@ -236,7 +259,6 @@
       "mitigation_path": "Consider adding DP noise to released outputs post-MPC computation to bound individual-level leakage"
     }
   ],
-
   "change_log": [
     {
       "date": "2026-05-01",
@@ -249,17 +271,26 @@
       "author": "Privacy Explorer"
     }
   ],
-
-  "exposure_problem_refs": ["EP-02", "EP-03"],
-
+  "exposure_problem_refs": [
+    "EP-02",
+    "EP-03"
+  ],
   "jurisdictional_context": {
-    "data_subjects": ["UK", "EU"],
-    "controllers": ["UK", "EU"],
-    "operators": ["UK", "EU"],
+    "data_subjects": [
+      "UK",
+      "EU"
+    ],
+    "controllers": [
+      "UK",
+      "EU"
+    ],
+    "operators": [
+      "UK",
+      "EU"
+    ],
     "cross_border_mechanism": "intra-EEA + UK adequacy; bilateral contracts between participating banks",
     "notes": "Cross-bank cross-border deployment within UK-EEA only. US bank participation deferred pending review of cross-border AML disclosure obligations."
   },
-
   "stepwise_chain": [
     {
       "step": 0,
