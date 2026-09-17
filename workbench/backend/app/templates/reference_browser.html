@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Workbench · Reference (T0–T4){% endblock %}
+{% block content %}
+<section class="wb-panel" x-data="referenceBrowser()" x-init="loadKey('primitives')">
+  <h1>Reference (T0–T4)</h1>
+  <p class="wb-help">
+    Data is read live from <code>/repo/data/*.yaml</code> on each request.
+    Edit the YAML on the host and reload to see the change.
+  </p>
+
+  <nav class="wb-tabs">
+    <template x-for="k in keys" :key="k">
+      <button class="wb-tab" :class="{ 'wb-tab-active': k === current }" @click="loadKey(k)" x-text="k.replace('_', ' ')"></button>
+    </template>
+  </nav>
+
+  <pre class="wb-yaml" x-text="JSON.stringify(payload, null, 2)"></pre>
+</section>
+
+<script>
+  function referenceBrowser() {
+    return {
+      keys: ["exposure_problems", "primitives", "pairings", "stacks", "sectors"],
+      current: "primitives",
+      payload: null,
+      async loadKey(k) {
+        this.current = k;
+        const r = await fetch("/api/reference/" + k);
+        this.payload = await r.json();
+      },
+    };
+  }
+</script>
+{% endblock %}

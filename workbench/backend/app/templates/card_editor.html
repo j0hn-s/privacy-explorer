@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Workbench · Card editor{% endblock %}
+{% block content %}
+<section class="wb-panel" x-data="cardEditor()" x-init="init({{ (card | tojson) if card else 'null' }})">
+  <h1 x-text="card?.card_id ? `Edit ${card.card_id}` : 'New card'"></h1>
+  <p class="wb-help">
+    The MVP editor accepts the full card JSON for clarity (cards are
+    JSON-Schema documents; a hand-rolled form for every field is a stretch
+    item — see limitations.md). Validation runs on save; failures show below.
+  </p>
+
+  <div class="wb-actions">
+    <label class="wb-button">
+      Import JSON
+      <input type="file" accept="application/json" @change="importJson($event)" hidden />
+    </label>
+    <button class="wb-button" @click="copyAsJson()">Copy JSON</button>
+    <button class="wb-button" @click="loadExample()">Load example</button>
+  </div>
+
+  <textarea x-model="cardJson" class="wb-card-json" spellcheck="false"></textarea>
+
+  <div class="wb-actions">
+    <button class="wb-button wb-primary" @click="save()">Save</button>
+    <button class="wb-button" @click="evaluate()" x-show="card?.card_id">Evaluate</button>
+    <button class="wb-button wb-danger" @click="deleteCard()" x-show="card?.card_id">Delete</button>
+  </div>
+
+  <p class="wb-status" x-text="status" :class="statusClass"></p>
+  <pre class="wb-errors" x-show="errors.length" x-text="errors.join('\n')"></pre>
+
+  <section x-show="lastEvaluation" class="wb-eval">
+    <h2>Last evaluation</h2>
+    <p>
+      Rating: <span class="wb-rating" :data-rating="lastEvaluation?.rating" x-text="lastEvaluation?.rating"></span>
+      &middot; <span x-text="(lastEvaluation?.findings || []).length"></span> findings
+      &middot; <span x-text="lastEvaluation?.rules_count"></span> rules evaluated
+    </p>
+    <details>
+      <summary>Findings JSON</summary>
+      <pre x-text="JSON.stringify(lastEvaluation?.findings, null, 2)"></pre>
+    </details>
+    <details>
+      <summary>Markdown report</summary>
+      <pre x-text="lastEvaluation?.report_md"></pre>
+    </details>
+  </section>
+</section>
+
+<script>
+  function cardEditor() {
+    return {
+      card: null,
+      cardJson: "",
+      status: "",
+      statusClass: "",
+      errors: [],
+      lastEvaluation: null,
+
+      init(initialCard) {
+        if (initialCard) {
+          this.card = initialCard;
+          this.cardJson = JSON.stringify(initialCard, null, 2);
+        } else {
+          this.cardJson = JSON.stringify(this.emptyCard(), null, 2);
+        }
+      },
+
+      emptyCard() {
+        return {
+          card_id: "CARD-new-" + Date.now(),
+          schema_version: "1.2",
+          title: "Untitled card",
+          created: new Date().toISOString().slice(0, 10),
+          status: "draft",
+          pet_components: [],
+          trust_model: { summary: "", threat_actors: [] },
+          assurance_targets: { required_artefacts: [] },
+          deployment_context: { sector_ref: "public_sector" }
+        };
+      },
+
+      parsed() {
+        try {
+          return [JSON.parse(this.cardJson), null];
+        } catch (e) {
+          return [null, e.message];
+        }
+      },
+
+      async save() {
+        const [card, parseErr] = this.parsed();
+        if (parseErr) {
+          this.errors = ["JSON parse: " + parseErr];
+          this.status = "Save aborted (invalid JSON)."; this.statusClass = "wb-error";
+          return;
+        }
+        const r = await fetch("/api/cards/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(card),
+        });
+        if (r.ok) {
+          const data = await r.json();
+          this.status = `Saved at ${data.saved_at}`; this.statusClass = "wb-ok";
+          this.card = card;
+          this.errors = [];
+          if (!window.location.pathname.endsWith("/" + card.card_id)) {
+            window.history.replaceState({}, "", "/cards/" + card.card_id);
+          }
+        } else {
+          const data = await r.json();
+          this.errors = (data?.detail?.validation_errors) || [r.statusText];
+          this.status = "Save failed."; this.statusClass = "wb-error";
+        }
+      },
+
+      async evaluate() {
+        if (!this.card?.card_id) { this.status = "Save first."; this.statusClass = "wb-error"; return; }
+        const r = await fetch("/api/evaluate/" + this.card.card_id, { method: "POST" });
+        const data = await r.json();
+        this.lastEvaluation = data;
+        this.status = `Evaluated · ${data.rating} · ${data.findings.length} findings`; this.statusClass = "wb-ok";
+      },
+
+      async deleteCard() {
+        if (!this.card?.card_id) return;
+        if (!confirm("Delete card " + this.card.card_id + "?")) return;
+        const r = await fetch("/api/cards/" + this.card.card_id, { method: "DELETE" });
+        if (r.ok) window.location.href = "/cards";
+      },
+
+      importJson(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+          this.cardJson = e.target.result;
+          try { this.card = JSON.parse(this.cardJson); } catch {}
+        };
+        reader.readAsText(file);
+      },
+
+      async copyAsJson() {
+        await navigator.clipboard.writeText(this.cardJson);
+        this.status = "JSON copied to clipboard."; this.statusClass = "wb-ok";
+      },
+
+      async loadExample() {
+        const r = await fetch("/api/cards/?size=1");
+        const cards = await r.json();
+        if (cards.length) {
+          this.cardJson = JSON.stringify(cards[0], null, 2);
+          this.card = cards[0];
+        }
+      },
+    };
+  }
+</script>
+{% endblock %}

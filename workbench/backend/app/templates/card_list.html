@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Workbench · Cards{% endblock %}
+{% block content %}
+<section class="wb-panel" x-data="cardListState()" x-init="load()">
+  <h1>Saved cards</h1>
+  <div class="wb-filters">
+    <label>Sector:
+      <select x-model="sectorFilter" @change="load()">
+        <option value="">(any)</option>
+        <option value="public_sector">Public sector</option>
+        <option value="healthcare">Healthcare</option>
+        <option value="finance">Finance</option>
+        <option value="technology">Technology</option>
+        <option value="web3">Web3</option>
+      </select>
+    </label>
+    <label>Search:
+      <input type="text" x-model="query" @input.debounce.300ms="searchOrLoad()" placeholder="card id, title, primitive…" />
+    </label>
+  </div>
+
+  <table class="wb-table">
+    <thead>
+      <tr>
+        <th>Card</th>
+        <th>Sector</th>
+        <th>Primitives</th>
+        <th>Schema</th>
+        <th>Rating</th>
+        <th>Last updated</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="c in cards" :key="c.card_id">
+        <tr>
+          <td><a :href="`/cards/${c.card_id}`" x-text="c.title || c.card_id"></a></td>
+          <td x-text="c.deployment_context?.sector_ref || '—'"></td>
+          <td><span x-text="(c.primitive_ids || []).join(', ') || '—'"></span></td>
+          <td x-text="c.schema_version || '—'"></td>
+          <td>
+            <span class="wb-rating" :data-rating="c.findings_summary?.rating || '—'"
+                  x-text="c.findings_summary?.rating || '—'"></span>
+          </td>
+          <td x-text="c.last_updated || '—'"></td>
+          <td>
+            <a :href="`/cards/${c.card_id}/evaluate`">Evaluate</a>
+            &middot;
+            <a :href="`/cards/${c.card_id}`">Edit</a>
+          </td>
+        </tr>
+      </template>
+      <tr x-show="cards.length === 0">
+        <td colspan="7"><em>No cards match.</em></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<script>
+  function cardListState() {
+    return {
+      cards: [],
+      sectorFilter: "",
+      query: "",
+      async load() {
+        const params = new URLSearchParams();
+        if (this.sectorFilter) params.set("sector", this.sectorFilter);
+        const r = await fetch("/api/cards/?" + params.toString());
+        this.cards = await r.json();
+      },
+      async searchOrLoad() {
+        if (!this.query) { await this.load(); return; }
+        const r = await fetch("/api/search/?q=" + encodeURIComponent(this.query));
+        this.cards = await r.json();
+      },
+    };
+  }
+</script>
+{% endblock %}

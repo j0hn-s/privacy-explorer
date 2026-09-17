@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Workbench · Home{% endblock %}
+{% block content %}
+<section class="wb-panel">
+  <h1>Workbench</h1>
+  <p>
+    A local sandbox for the privacy-explorer framework. Author Privacy Cards,
+    run them through the YAPS rule engine, browse the T0–T4 reference materials,
+    and ingest empirical results from <code>privacy-eval/</code> into a card's
+    <code>risk_calibration</code> block.
+  </p>
+  <p class="wb-wip-note">
+    <strong>WIP — research scaffolding, not production.</strong>
+    See <a href="https://github.com/j0hn-s/privacy-explorer/blob/main/workbench/limitations.md">limitations.md</a>
+    for what this is not.
+  </p>
+
+  <div class="wb-actions">
+    <a class="wb-button" href="/cards">Browse saved cards</a>
+    <a class="wb-button" href="/cards/new">Create a card</a>
+    <a class="wb-button" href="/reference">Browse T0–T4 reference</a>
+  </div>
+</section>
+
+<section class="wb-panel">
+  <h2>How this fits with the rest of the repository</h2>
+  <ul>
+    <li><strong>Reference data</strong> (T0–T4) is read live from <code>/repo/data/*.yaml</code>.</li>
+    <li><strong>Rules</strong> are read live from <code>/repo/yaps/rules/rules.yaml</code> on each evaluation.</li>
+    <li><strong>Engine</strong> is the canonical <code>yaps/engine/risk_engine.py</code> imported directly — identical semantics to the CLI.</li>
+    <li><strong>Persistence</strong>: Elasticsearch indices <code>cards-v1</code>, <code>card-versions-v1</code>, <code>evaluations-v1</code>.</li>
+    <li><strong>Schema versions</strong>: 1.0, 1.1, and 1.2 (with the <code>risk_calibration</code> block).</li>
+  </ul>
+</section>
+{% endblock %}

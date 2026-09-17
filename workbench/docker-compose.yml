@@ -1,0 +1,57 @@
+# workbench — local-only sandbox for the privacy-explorer framework.
+# See README.md and limitations.md before running.
+#
+# Bring up:    docker-compose up
+# Tear down:   docker-compose down            (keeps the ES volume)
+# Wipe state:  docker-compose down -v         (also deletes es-data)
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: workbench-es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false          # local-only; see limitations.md
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m        # laptop-friendly
+      - cluster.name=workbench
+    ports:
+      - "127.0.0.1:9200:9200"                 # bind localhost only
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: workbench-backend
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - ES_URL=http://elasticsearch:9200
+      - REPO_ROOT=/repo
+      - WORKBENCH_VERSION=0.1.0-wip
+    volumes:
+      - ../:/repo:ro                          # read-only mount of the whole repo
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  # ─── Stretch services (uncomment to enable) ──────────────────────────────
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:8.13.0
+  #   depends_on:
+  #     elasticsearch: { condition: service_healthy }
+  #   environment:
+  #     - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+  #   ports:
+  #     - "127.0.0.1:5601:5601"
+
+volumes:
+  es-data:
+    name: workbench-es-data

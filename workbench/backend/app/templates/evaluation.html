@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Workbench · Evaluation{% endblock %}
+{% block content %}
+<section class="wb-panel" x-data="evalState({{ card_id | tojson }})" x-init="run()">
+  <h1>Evaluation · <code x-text="cardId"></code></h1>
+  <p>
+    <a :href="`/cards/${cardId}`">← back to card editor</a>
+  </p>
+
+  <p x-show="loading" class="wb-status">Running…</p>
+
+  <section x-show="result" class="wb-eval">
+    <h2>
+      Overall rating: <span class="wb-rating" :data-rating="result?.rating" x-text="result?.rating"></span>
+    </h2>
+    <p>
+      <span x-text="(result?.findings || []).length"></span> findings &middot;
+      <span x-text="result?.rules_count"></span> rules evaluated
+    </p>
+
+    <h3>Findings</h3>
+    <ul class="wb-findings">
+      <template x-for="f in result?.findings || []" :key="f.id">
+        <li>
+          <span class="wb-rating" :data-rating="f.severity" x-text="f.severity"></span>
+          <strong x-text="f.id"></strong> — <span x-text="f.name"></span>
+          <p x-text="f.finding"></p>
+        </li>
+      </template>
+    </ul>
+
+    <details>
+      <summary>Full Markdown report</summary>
+      <pre x-text="result?.report_md"></pre>
+    </details>
+  </section>
+
+  <section x-show="result?.errors?.length" class="wb-panel">
+    <h3>Evaluation errors</h3>
+    <pre x-text="(result?.errors || []).join('\n')"></pre>
+  </section>
+
+  <section class="wb-panel">
+    <h3>Ingest a privacy-eval result</h3>
+    <p class="wb-help">
+      Paste a privacy-eval result-record JSON (e.g. from
+      <code>privacy-eval/results/mia/per_record/.../*.json</code>). The workbench
+      will populate this card's <code>risk_calibration.attack_target</code>
+      and re-evaluate. Requires the card to be at schema 1.2 (will be promoted
+      from 1.1 automatically).
+    </p>
+    <textarea x-model="evalJson" class="wb-card-json wb-card-json-small" spellcheck="false"
+              placeholder='{"attack_tag":"A","attack_variant":"A.2-per-record","primary_metric":{"name":"worst_record_tpr_at_fpr_0.001","value":0.025}}'></textarea>
+    <button class="wb-button" @click="ingestEval()">Ingest and re-evaluate</button>
+    <p class="wb-status" x-text="ingestStatus" :class="ingestStatusClass"></p>
+  </section>
+</section>
+
+<script>
+  function evalState(cardId) {
+    return {
+      cardId,
+      result: null,
+      loading: false,
+      evalJson: "",
+      ingestStatus: "",
+      ingestStatusClass: "",
+
+      async run() {
+        this.loading = true;
+        const r = await fetch("/api/evaluate/" + this.cardId, { method: "POST" });
+        this.result = await r.json();
+        this.loading = false;
+      },
+
+      async ingestEval() {
+        let payload;
+        try { payload = JSON.parse(this.evalJson); }
+        catch (e) {
+          this.ingestStatus = "Invalid JSON: " + e.message;
+          this.ingestStatusClass = "wb-error";
+          return;
+        }
+        const r = await fetch("/api/evaluate/" + this.cardId + "/ingest-eval", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await r.json();
+        if (r.ok) {
+          this.ingestStatus = `Ingested ${data.ingested_metric?.name} = ${data.ingested_metric?.value}. Re-evaluating…`;
+          this.ingestStatusClass = "wb-ok";
+          await this.run();
+        } else {
+          this.ingestStatus = "Ingestion failed: " + (data?.detail || r.statusText);
+          this.ingestStatusClass = "wb-error";
+        }
+      },
+    };
+  }
+</script>
+{% endblock %}
