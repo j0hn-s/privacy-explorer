@@ -10,11 +10,15 @@ Usage:
     python scripts/generate_tables.py            # rewrite README.md in place
     python scripts/generate_tables.py --check     # exit 1 if README.md is stale (CI use)
 
-Table cells that condense a longer YAML field (e.g. a one-clause "Dominant
-Bottleneck" drawn from a full `bottleneck` paragraph) use the first sentence
-of that field. This is a deliberate, simple, and stable rule — it will not
-always read as smoothly as a hand-tuned cell, but it cannot silently drift
-from the source the way a hand-written cell can.
+Every cell is hard-capped in length (see CHAR_CAP / LIST_CAP below). The
+first pass at this generator used a "first sentence" rule with no outer
+bound, which for fields like `use_case` and `assurance_posture` had no cap
+at all — some cells ran 200+ characters, which is what made the rendered
+tables on GitHub genuinely too wide to read. These tables are documented
+elsewhere as summaries ("A summary" / "designed to be read relationally"),
+not the full record, so hard-capping and pointing to the YAML for the full
+text is a correction, not a loss of information — the YAML was always the
+canonical source.
 """
 
 from __future__ import annotations
@@ -29,6 +33,13 @@ ROOT = Path(__file__).parent.parent
 DATA = ROOT / "data"
 README = ROOT / "README.md"
 
+# Hard caps. Deliberately tight — GFM table columns size to their widest
+# cell, so one long row makes every row in that column wide. Tuned so a
+# 6-7 column table stays inside a normal viewport without horizontal
+# scrolling on GitHub.
+CHAR_CAP = 48
+LIST_ITEM_CAP = 2
+
 
 def load(name: str) -> list[dict]:
     doc = yaml.safe_load((DATA / name).read_text())
@@ -41,7 +52,7 @@ _ABBREVS = {"e.g", "i.e", "etc", "vs", "cf", "approx", "u.s", "u.k", "eu", "al",
 
 def first_sentence(text: str | None) -> str:
     if not text:
-        return "—"
+        return ""
     text = " ".join(text.split())  # collapse YAML block-scalar whitespace
     for m in re.finditer(r"[.!?](\s|$)", text):
         before = text[: m.start()]
@@ -54,6 +65,32 @@ def first_sentence(text: str | None) -> str:
             continue
         return text[: m.start() + 1].strip()
     return text.strip()
+
+
+def truncate_chars(text: str, max_len: int = CHAR_CAP) -> str:
+    """Hard character cap, cut at the last word boundary, ellipsised."""
+    if not text:
+        return "—"
+    if len(text) <= max_len:
+        return text
+    cut = text[:max_len].rsplit(" ", 1)[0].rstrip(",;:")
+    return cut + "…"
+
+
+def short_prose(text: str | None, max_len: int = CHAR_CAP) -> str:
+    """first-sentence, then hard-capped — natural phrasing when it fits,
+    a guaranteed bound when it doesn't."""
+    return truncate_chars(first_sentence(text), max_len)
+
+
+def short_list(items: list[str], max_items: int = LIST_ITEM_CAP, max_len: int = CHAR_CAP) -> str:
+    if not items:
+        return "—"
+    shown = truncate_chars(", ".join(items[:max_items]), max_len)
+    remaining = len(items) - max_items
+    if remaining > 0:
+        shown += f" (+{remaining} more)"
+    return shown
 
 
 def md_escape(text: str) -> str:
@@ -75,9 +112,9 @@ def gen_t0(eps: list[dict]) -> str:
         if not refs:
             # entries with only a bare `note` (no ref), e.g. EP-10's "machine unlearning"
             refs = ", ".join(rp["note"].split(" — ")[0] for rp in e["responding_pets"] if not rp.get("ref"))
-        anchors = " + ".join(e["assurance_anchors"][:2])
-        anchors = anchors[0].upper() + anchors[1:] if anchors else "—"
-        rows.append([f"`{e['id']}`", e["name"], refs, anchors])
+        anchor = e["assurance_anchors"][0] if e["assurance_anchors"] else "—"
+        anchor = truncate_chars(anchor[0].upper() + anchor[1:], CHAR_CAP) if anchor != "—" else anchor
+        rows.append([f"`{e['id']}`", e["name"], refs, anchor])
     return table(rows)
 
 
@@ -90,10 +127,10 @@ def gen_t1(prims: list[dict]) -> str:
         family = p["family"].capitalize() + ("*" if p["id"] == "SDC" else "")
         rows.append([
             f"`{p['id']}`", p["technique"], family,
-            first_sentence(p["trust_model"]),
-            ", ".join(p["core_artefacts"]),
-            first_sentence(p["bottleneck"]),
-            first_sentence(p["maturity_notes"]),
+            short_prose(p["trust_model"]),
+            short_list(p["core_artefacts"]),
+            short_prose(p["bottleneck"]),
+            short_prose(p["maturity_notes"]),
         ])
     return table(rows)
 
@@ -114,11 +151,11 @@ def gen_t2(pairs: list[dict]) -> str:
         a, b = (pet_label(x, p) for x in p["pets"])
         rows.append([
             f"`{p['id']}`", f"`{a}`", f"`{b}`",
-            first_sentence(p["combination_logic"]),
-            p["survey_paper_anchor"],
-            ", ".join(p["artefacts"]),
-            first_sentence(p["advantage"]),
-            first_sentence(p["shortcoming"]),
+            short_prose(p["combination_logic"]),
+            truncate_chars(p["survey_paper_anchor"]),
+            short_list(p["artefacts"]),
+            short_prose(p["advantage"]),
+            short_prose(p["shortcoming"]),
         ])
     return table(rows)
 
@@ -132,19 +169,19 @@ def gen_t3(stacks: list[dict], pairs_by_id: dict[str, dict]) -> str:
         rows.append([
             f"`{s['id']}`", base_label, f"`{s['added_layer']}`",
             " + ".join(s["full_stack"]),
-            s["survey_paper_anchor"],
-            " ".join(s["use_case"].split()),
-            first_sentence(s["assurance_narrative"]),
+            truncate_chars(s["survey_paper_anchor"]),
+            short_prose(s["use_case"]),
+            short_prose(s["assurance_narrative"]),
         ])
     return table(rows)
 
 
 SECTOR_LABELS = {
-    "public_sector": "Public sector / official statistics / governed research",
+    "public_sector": "Public sector / official statistics",
     "healthcare": "Healthcare / biomedical research",
-    "finance": "Finance / fraud / inter-organisational analytics",
-    "technology": "Technology platforms / consumer AI / large-scale telemetry",
-    "web3": "Web3 / verifiable infrastructure / credential ecosystems",
+    "finance": "Finance / fraud analytics",
+    "technology": "Technology / consumer AI",
+    "web3": "Web3 / verifiable infrastructure",
 }
 
 
@@ -154,22 +191,15 @@ def gen_t4(sectors: list[dict], pairs_by_id: dict[str, dict], stacks_by_id: dict
         stacks_col = []
         for ref in s["primary_stacks"]:
             rid = ref["ref"]
-            if rid in pairs_by_id:
-                p = pairs_by_id[rid]
-                pets = " + ".join(pet_label(x, p) for x in p["pets"])
-            elif rid in stacks_by_id:
-                pets = " + ".join(stacks_by_id[rid]["full_stack"])
-            else:
-                pets = "?"
-            stacks_col.append(f"`{rid}` ({pets})")
+            stacks_col.append(f"`{rid}`")
         label = SECTOR_LABELS.get(s["id"], s["id"])
         rows.append([
             f"**{label}**",
             ", ".join(stacks_col),
-            " ".join(s["assurance_posture"].split()),
-            s["dominant_anchor"],
-            first_sentence(s["maturity_notes"]),
-            first_sentence(s["blocker"]),
+            short_prose(s["assurance_posture"]),
+            truncate_chars(s["dominant_anchor"]),
+            short_prose(s["maturity_notes"]),
+            short_prose(s["blocker"]),
         ])
     return table(rows)
 
