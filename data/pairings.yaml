@@ -21,6 +21,17 @@
 #   deployment_documented = live deployment with published assurance artefacts or case study
 #   practitioner_reported = referenced in grey literature, industry reports, or standards docs
 #   theoretical           = analytically motivated but no substantive deployment evidence yet
+#
+# first_documented / evidence_last_updated (added 2026-09):
+#   first_documented is the earliest publication year among this entry's own
+#   `references` list — a mechanical, conservative rule, not independent
+#   historical research. Stated here so it's reproducible and contestable: if
+#   you disagree with a date, check the references list, not our judgement —
+#   either the list is missing an earlier source (add it) or the date is
+#   simply what's currently evidenced.
+#   evidence_last_updated is the date this entry's references and confidence
+#   level were last checked against current sources. Ages independently of
+#   the file-level `last_updated` above, which bumps on any edit to the file.
 
 schema_version: "1.1"
 last_updated: "2026-09-02"
@@ -54,6 +65,8 @@ pairings:
       client distributions; DP applied without secure aggregation leaves a
       coordinator-visibility gap (see S-03).
     confidence: deployment_documented
+    first_documented: "2016"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "Xu et al. (2023) — Federated Learning of Gboard Language Models with Differential Privacy"
         url: "https://aclanthology.org/2023.acl-industry.60/"
@@ -89,6 +102,8 @@ pairings:
       protocol complexity; does not bound information leakage *from the
       aggregate itself* — needs to be paired with DP (see S-03).
     confidence: deployment_documented
+    first_documented: "2017"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "Bonawitz et al. (2017) — Practical secure aggregation for privacy-preserving ML"
         url: "https://doi.org/10.1145/3133956.3133982"
@@ -119,6 +134,8 @@ pairings:
       management overhead; does not provide formal bounds on output disclosure
       (see S-01 for DP addition).
     confidence: deployment_documented
+    first_documented: "2021"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "Intel (2021) — Intel SGX helps Ping An Technology successfully apply federated learning"
         url: "https://www.intel.com/content/dam/www/public/us/en/documents/case-studies/ping-an-technology-sgx-case-study.pdf"
@@ -150,6 +167,8 @@ pairings:
       Dual trust anchors — hardware vendor and correct DP parameterisation —
       both require assurance; composability risk if threat models are misaligned.
     confidence: deployment_documented
+    first_documented: "2025"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "ONS Secure Research Service"
         url: "https://www.ons.gov.uk/aboutus/whatwedo/statistics/requestingstatistics/approvedresearcherscheme"
@@ -183,6 +202,8 @@ pairings:
       (cryptanalysis + hardware exploits) requires explicit threat-model fusion;
       enclave memory limits can constrain MPC circuit size.
     confidence: deployment_documented
+    first_documented: "2019"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "World Economic Forum (2019) — Data collaboration for the common good (cross-bank SGX pilot)"
         url: "https://www3.weforum.org/docs/WEF_Data_Collaboration_for_the_Common_Good.pdf"
@@ -216,6 +237,8 @@ pairings:
       production deployments outside research contexts. Not yet treated by the
       survey as a primary combination.
     confidence: theoretical
+    first_documented: "2023"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "Chen et al. (2024) — Enabling practical verifiable ML with ZKPs (ZKML)"
         url: ""
@@ -251,6 +274,8 @@ pairings:
       non-technical domain input; legal sufficiency of DP evidence varies by
       jurisdiction (Kenny et al. 2021; Muralidhar et al. 2025).
     confidence: deployment_documented
+    first_documented: "2021"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "ONS (2023) — Protecting personal data in Census 2021 results"
         url: "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/methodologies/protectingpersonaldataincensus2021results"
@@ -290,6 +315,8 @@ pairings:
       models compounds noise across generation steps. Inference attacks remain
       difficult to anticipate beyond standard DP analysis (Houssiau et al. 2022).
     confidence: peer_reviewed
+    first_documented: "2018"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "McKenna et al. (2021) — Winning the NIST DP synthetic data competition"
         url: "https://arxiv.org/abs/2108.04978"
@@ -339,6 +366,8 @@ pairings:
       selection does not scale as cleanly as an automated noise mechanism
       once a programme of releases grows large (see SDC bottleneck).
     confidence: deployment_documented
+    first_documented: "2012"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "Office for National Statistics (2024) — Statistical Disclosure Control policy"
         url: "https://www.ons.gov.uk/aboutus/transparencyandgovernance/datastrategy/datapolicies/statisticaldisclosurecontrol"
@@ -393,6 +422,8 @@ pairings:
       Whether results and code developed on synthetic data reliably
       generalise to the real-data analysis is not verified in general.
     confidence: peer_reviewed
+    first_documented: "2022"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "Health Data Insight / NHS England NDRS (2025) — Leveraging Synthetic Data to Facilitate Research: A Collaborative Model for Analyzing Sensitive National Cancer Registry Data in England"
         url: "https://link.springer.com/article/10.1007/s43441-025-00820-z"

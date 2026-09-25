@@ -14,8 +14,8 @@ The YAML files in `data/` are the canonical source for all five tables. Fork fre
 
 **Contributions that are most useful:**
 - **Contested maturity assessments** — if deployment evidence places a combination at a different stage than the current entry, note the evidence in the `maturity_notes` field. The `confidence` field exists precisely to signal how contestable an entry is.
-- **New T2 pairings** — must include an `artefacts` list and at least one published reference with a `url` field. Combinations without identifiable assurance artefacts will not be admitted to T2.
-- **New T3 stacks** — must include a `rationale`, `assurance_narrative`, and `key_artefacts` list. Stacks with `confidence: theoretical` are acceptable with a clear rationale.
+- **New T2 pairings** — must include an `artefacts` list and at least one published reference with a `url` field. Combinations without identifiable assurance artefacts will not be admitted to T2. Also include `first_documented` (the earliest publication year in your own `references` list — mechanical, not extra research) and `evidence_last_updated` (today's date).
+- **New T3 stacks** — must include a `rationale`, `assurance_narrative`, and `key_artefacts` list. Stacks with `confidence: theoretical` are acceptable with a clear rationale. Same `first_documented` / `evidence_last_updated` expectation as T2.
 - **Sector sub-entries** — T4 is deliberately coarse; sub-sector contributions are particularly welcome for jurisdictions not currently represented.
 
 ### YAPS rules (`yaps/rules/rules.yaml`)

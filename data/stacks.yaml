@@ -14,6 +14,11 @@
 # feasibility, or institutional acceptability.
 #
 # confidence levels: same scale as pairings.yaml
+#
+# first_documented / evidence_last_updated (added 2026-09): same rule as
+# pairings.yaml — first_documented is the earliest publication year among
+# this entry's own `references`; evidence_last_updated is when the entry was
+# last checked against current sources. See pairings.yaml for the full note.
 
 schema_version: "1.1"
 last_updated: "2026-05-24"
@@ -53,6 +58,8 @@ stacks:
       composability risk if TEE and DP threat models are not explicitly aligned;
       requires expertise spanning systems, cryptography, and privacy engineering.
     confidence: deployment_documented
+    first_documented: "2024"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "NVIDIA FLARE — federated learning application runtime environment"
         url: "https://nvflare.readthedocs.io/"
@@ -96,6 +103,8 @@ stacks:
       engineering); latency from multi-layer approval processes can stall
       research timelines.
     confidence: deployment_documented
+    first_documented: "2022"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "ONS Secure Research Service"
         url: "https://www.ons.gov.uk/aboutus/whatwedo/statistics/requestingstatistics/approvedresearcherscheme"
@@ -136,6 +145,8 @@ stacks:
       accounting must correctly model the interaction between secure-aggregation
       sampling and DP noise; engineering and operational complexity is high.
     confidence: peer_reviewed
+    first_documented: "2017"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "Bonawitz et al. (2017) — practical secure aggregation"
         url: "https://doi.org/10.1145/3133956.3133982"
@@ -180,6 +191,8 @@ stacks:
       own fidelity loss; TEE enclave memory limits can constrain generator
       architecture.
     confidence: theoretical
+    first_documented: "2019"
+    evidence_last_updated: "2026-09-25"
     references:
       - text: "McKenna et al. (2021) — winning the NIST DP synthetic data competition"
         url: "https://arxiv.org/abs/2108.04978"

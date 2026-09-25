@@ -360,9 +360,9 @@ The workbench owns no canonical state; everything mutable lives in Elasticsearch
 
 The following changes would materially strengthen this resource. They are ordered roughly by impact.
 
-### 1. Add a `confidence` level to every T2 and T3 entry
+### 1. Add a `confidence` level to every T2 and T3 entry — verified done (2026-09)
 
-Current entries mix peer-reviewed deployments with practitioner-reported combinations. Adding a `confidence` field — e.g. `peer_reviewed`, `deployment_documented`, `practitioner_reported`, `theoretical` — would let readers calibrate how much weight to give each row and make the suggestive/evidenced distinction explicit in the data rather than only in prose.
+Checked directly rather than assumed: all 10 `pairings.yaml` entries and all 4 `stacks.yaml` entries already carry a valid `confidence` value (`peer_reviewed`, `deployment_documented`, or `theoretical` — `practitioner_reported` defined but not currently needed by any entry). This iteration item was already satisfied by the time it was revisited; nothing further to do here.
 
 ### 2. Expand T2 to include underrepresented combinations — partially done (2026-09)
 
@@ -372,9 +372,9 @@ Current entries mix peer-reviewed deployments with practitioner-reported combina
 
 Built as [EXCLUDED_COMBINATIONS.md](EXCLUDED_COMBINATIONS.md) and [data/exclusions.yaml](data/exclusions.yaml). Documents combinations considered and their disposition — `excluded` (with a named evidence gap and revisit trigger) or `promoted` (kept as an audit-trail record once admitted to T2/T3, per item 2 above). Directly addresses the combinatorics-vs-practice gap in Section 7 of the paper. Workshop-facing by design: each excluded entry is an explicit invitation for a stakeholder to name the deployment or paper that would close the gap.
 
-### 4. Add temporal fields
+### 4. Add temporal fields — done (2026-09)
 
-`first_documented` and `evidence_last_updated` fields in `pairings.yaml` and `stacks.yaml` would let readers see which combinations are established versus newly emerging and would prevent the resource from appearing more stable than it is over time.
+`first_documented` and `evidence_last_updated` added to all 10 `pairings.yaml` entries and all 4 `stacks.yaml` entries. `first_documented` is deliberately mechanical — the earliest publication year among the entry's own `references` list, not independent historical research — so it's reproducible and contestable by any contributor who checks the citations. Verified programmatically against every entry's actual reference years, not just asserted. Range: `P-09` (SDC+TRE) is earliest at 2012 (Hundepool et al., the classical SDC textbook — consistent with SDC's own framing as the longest-established technique in the registry); `P-04` (TEE+DP) and `S-01` (FL+TEE+DP-C) are most recent (2024–2025). Not surfaced as a new README table column — the existing tables were just fixed for width (see item 6), and a 7th/8th column would undo that; the data lives in the YAML for now, matching how `confidence` also isn't shown as its own table column today.
 
 ### 5. Add deployment evidence URLs
 
