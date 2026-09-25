@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate README.md's T0-T4 markdown tables from the canonical data/*.yaml.
+"""Regenerate README.md's T0-T4 reference materials from the canonical data/*.yaml.
 
 Closes the hand-sync drift risk named in DIAGRAM.md's "Suggested Further
 Iterations" #6: every prior round of catalogue edits required manually
@@ -10,15 +10,22 @@ Usage:
     python scripts/generate_tables.py            # rewrite README.md in place
     python scripts/generate_tables.py --check     # exit 1 if README.md is stale (CI use)
 
-Every cell is hard-capped in length (see CHAR_CAP / LIST_CAP below). The
-first pass at this generator used a "first sentence" rule with no outer
-bound, which for fields like `use_case` and `assurance_posture` had no cap
-at all — some cells ran 200+ characters, which is what made the rendered
-tables on GitHub genuinely too wide to read. These tables are documented
-elsewhere as summaries ("A summary" / "designed to be read relationally"),
-not the full record, so hard-capping and pointing to the YAML for the full
-text is a correction, not a loss of information — the YAML was always the
-canonical source.
+Structural note (v2, 2026-09): the first version of this generator kept the
+original one-wide-table-per-T shape and just shortened cell text to fit. That
+treated it as a content problem; it's actually a structural one — a 7-8
+column GFM table renders wide on GitHub regardless of how short the cells
+are, because GitHub doesn't wrap table cells and column widths compound.
+Shortening text made individual cells more honest but didn't fix the width.
+
+This version instead renders each T as a short, narrow index table (2-4
+columns, nothing but IDs/names/confidence — genuinely short, not truncated)
+followed by one `<details>` block per entry carrying the *complete* text —
+full artefact lists, full trust models, full references as links. Nothing
+is cut short in the details blocks; there is no truncation logic in this
+file at all, deliberately, because truncation was the wrong lever last time.
+GitHub renders `<details>/<summary>` natively in READMEs; a blank line right
+after `<summary>` is required for GitHub to parse the block's contents as
+markdown rather than raw HTML — every details() call below includes it.
 """
 
 from __future__ import annotations
@@ -33,13 +40,6 @@ ROOT = Path(__file__).parent.parent
 DATA = ROOT / "data"
 README = ROOT / "README.md"
 
-# Hard caps. Deliberately tight — GFM table columns size to their widest
-# cell, so one long row makes every row in that column wide. Tuned so a
-# 6-7 column table stays inside a normal viewport without horizontal
-# scrolling on GitHub.
-CHAR_CAP = 48
-LIST_ITEM_CAP = 2
-
 
 def load(name: str) -> list[dict]:
     doc = yaml.safe_load((DATA / name).read_text())
@@ -47,53 +47,13 @@ def load(name: str) -> list[dict]:
     return doc[key]
 
 
-_ABBREVS = {"e.g", "i.e", "etc", "vs", "cf", "approx", "u.s", "u.k", "eu", "al", "et al", "fig", "eqn"}
-
-
-def first_sentence(text: str | None) -> str:
-    if not text:
-        return ""
-    text = " ".join(text.split())  # collapse YAML block-scalar whitespace
-    for m in re.finditer(r"[.!?](\s|$)", text):
-        before = text[: m.start()]
-        if not before:
-            continue
-        if before[-1].isupper():
-            continue  # single-capital initials, e.g. "J.P."
-        tail = re.sub(r"[^a-z.]", "", before.split(" ")[-1].lower())
-        if tail in _ABBREVS:
-            continue
-        return text[: m.start() + 1].strip()
-    return text.strip()
-
-
-def truncate_chars(text: str, max_len: int = CHAR_CAP) -> str:
-    """Hard character cap, cut at the last word boundary, ellipsised."""
-    if not text:
-        return "—"
-    if len(text) <= max_len:
-        return text
-    cut = text[:max_len].rsplit(" ", 1)[0].rstrip(",;:")
-    return cut + "…"
-
-
-def short_prose(text: str | None, max_len: int = CHAR_CAP) -> str:
-    """first-sentence, then hard-capped — natural phrasing when it fits,
-    a guaranteed bound when it doesn't."""
-    return truncate_chars(first_sentence(text), max_len)
-
-
-def short_list(items: list[str], max_items: int = LIST_ITEM_CAP, max_len: int = CHAR_CAP) -> str:
-    if not items:
-        return "—"
-    shown = truncate_chars(", ".join(items[:max_items]), max_len)
-    remaining = len(items) - max_items
-    if remaining > 0:
-        shown += f" (+{remaining} more)"
-    return shown
+def clean(text: str | None) -> str:
+    """Collapse YAML block-scalar whitespace. No truncation — see module docstring."""
+    return " ".join((text or "").split())
 
 
 def md_escape(text: str) -> str:
+    """Only needed inside table cells, where a literal '|' breaks the row."""
     return text.replace("|", "\\|")
 
 
@@ -101,45 +61,120 @@ def backticks(items) -> str:
     return ", ".join(f"`{i}`" for i in items)
 
 
-def table(rows: list[list[str]]) -> str:
-    return "\n".join("| " + " | ".join(md_escape(c) for c in r) + " |" for r in rows)
+def table(headers: list[str], rows: list[list[str]]) -> str:
+    """Generates its own header + separator row — see the v2 note above.
+    The very first version of this script relied on a static header/
+    separator sitting *inside* the AUTOGEN block in README.md; the first
+    time the generator ran, it silently replaced that block (data rows
+    only, no separator) and every run since produced pipe-delimited text
+    with no `|---|---|` line — which GitHub does not render as a table at
+    all, just literal text with visible pipe characters. Owning the header
+    here means that class of bug can't recur."""
+    sep = ["---"] * len(headers)
+    all_rows = [headers, sep] + rows
+    return "\n".join("| " + " | ".join(md_escape(c) for c in r) + " |" for r in all_rows)
 
+
+def bullet(label: str, value: str | None) -> str | None:
+    value = clean(value) if value else value
+    if not value or value == "—":
+        return None
+    return f"- **{label}:** {value}"
+
+
+def bullet_list(label: str, items: list[str] | None) -> list[str]:
+    if not items:
+        return []
+    out = [f"- **{label}:**"]
+    out.extend(f"  - {clean(i)}" for i in items)
+    return out
+
+
+def ref_list(label: str, refs: list) -> list[str]:
+    """references entries are either {text, url} dicts (T2/T3) or bare
+    strings (T1's key_references). Render as markdown links where a url
+    exists, plain text otherwise."""
+    if not refs:
+        return []
+    out = [f"- **{label}:**"]
+    for r in refs:
+        if isinstance(r, dict):
+            text, url = r.get("text", ""), r.get("url", "")
+            out.append(f"  - [{text}]({url})" if url else f"  - {text}")
+        else:
+            out.append(f"  - {r}")
+    return out
+
+
+def details(summary: str, body: list[str]) -> str:
+    lines = ["<details>", f"<summary>{summary}</summary>", ""]  # blank line: see module docstring
+    lines.extend(l for l in body if l is not None)
+    lines.append("")
+    lines.append("</details>")
+    return "\n".join(lines)
+
+
+# ─── T0 — Exposure Problems ────────────────────────────────────────────────
 
 def gen_t0(eps: list[dict]) -> str:
     rows = []
     for e in eps:
         refs = backticks([rp["ref"] for rp in e["responding_pets"] if rp.get("ref")])
         if not refs:
-            # entries with only a bare `note` (no ref), e.g. EP-10's "machine unlearning"
             refs = ", ".join(rp["note"].split(" — ")[0] for rp in e["responding_pets"] if not rp.get("ref"))
-        anchor = e["assurance_anchors"][0] if e["assurance_anchors"] else "—"
-        anchor = truncate_chars(anchor[0].upper() + anchor[1:], CHAR_CAP) if anchor != "—" else anchor
-        rows.append([f"`{e['id']}`", e["name"], refs, anchor])
-    return table(rows)
+        rows.append([f"`{e['id']}`", e["name"], refs])
+    idx = table(["EP", "Exposure problem", "Primary responding PETs"], rows)
 
+    blocks = []
+    for e in eps:
+        body = [
+            bullet("Description", e.get("description")),
+            "\n".join(bullet_list("Disclosure types", e.get("disclosure_types"))) or None,
+        ]
+        rp_lines = ["- **Responding PETs:**"]
+        for rp in e["responding_pets"]:
+            label = f"`{rp['ref']}`" if rp.get("ref") else "(no catalogued primitive)"
+            rp_lines.append(f"  - {label} — {clean(rp.get('note', ''))}")
+        body.append("\n".join(rp_lines))
+        body.append("\n".join(bullet_list("Assurance anchors", e.get("assurance_anchors"))) or None)
+        body.append(bullet("Canonical failure mode", e.get("canonical_failure_mode")))
+        if e.get("survey_paper_refs"):
+            body.append(bullet("Survey paper refs", ", ".join(e["survey_paper_refs"])))
+        blocks.append(details(f"<code>{e['id']}</code> — {e['name']}", body))
+
+    return idx + "\n\n" + "\n\n".join(blocks)
+
+
+# ─── T1 — Primitives ───────────────────────────────────────────────────────
 
 def gen_t1(prims: list[dict]) -> str:
-    # Variants before their family pointer (DP-L, DP-C, then DP), matching the
-    # explorer's stated reading order; otherwise YAML order.
     ordered = sorted(prims, key=lambda p: (bool(p.get("is_family_pointer")),))
     rows = []
     for p in ordered:
         family = p["family"].capitalize() + ("*" if p["id"] == "SDC" else "")
-        rows.append([
-            f"`{p['id']}`", p["technique"], family,
-            short_prose(p["trust_model"]),
-            short_list(p["core_artefacts"]),
-            short_prose(p["bottleneck"]),
-            short_prose(p["maturity_notes"]),
-        ])
-    return table(rows)
+        rows.append([f"`{p['id']}`", p["technique"], family, f"Stage {p.get('maturity_stage', '—')}"])
+    idx = table(["ID", "Technique", "Family", "Maturity"], rows)
 
+    blocks = []
+    for p in ordered:
+        body = [
+            bullet("Trust model", p.get("trust_model")),
+            "\n".join(bullet_list("Core artefacts", p.get("core_artefacts"))) or None,
+            bullet("Bottleneck", p.get("bottleneck")),
+            bullet("Maturity notes", p.get("maturity_notes")),
+            "\n".join(ref_list("Key references", p.get("key_references"))) or None,
+        ]
+        blocks.append(details(f"<code>{p['id']}</code> — {p['technique']}", body))
+
+    return idx + "\n\n" + "\n\n".join(blocks)
+
+
+# ─── T2 — Pairings ──────────────────────────────────────────────────────────
 
 def pet_label(pid: str, pairing: dict) -> str:
     """Prefer the pairing's typical_dp_variant (e.g. DP-C) over the bare 'DP'
-    family pointer in pets[], so the table stays as precise as the YAML
-    intends — pets[] is the foreign-key list, typical_dp_variant is the
-    display refinement."""
+    family pointer in pets[] — pets[] is the foreign-key list,
+    typical_dp_variant is the display refinement."""
     if pid == "DP" and pairing.get("typical_dp_variant"):
         return pairing["typical_dp_variant"]
     return pid
@@ -149,59 +184,95 @@ def gen_t2(pairs: list[dict]) -> str:
     rows = []
     for p in pairs:
         a, b = (pet_label(x, p) for x in p["pets"])
-        rows.append([
-            f"`{p['id']}`", f"`{a}`", f"`{b}`",
-            short_prose(p["combination_logic"]),
-            truncate_chars(p["survey_paper_anchor"]),
-            short_list(p["artefacts"]),
-            short_prose(p["advantage"]),
-            short_prose(p["shortcoming"]),
-        ])
-    return table(rows)
+        rows.append([f"`{p['id']}`", f"`{a}`", f"`{b}`", p["confidence"]])
+    idx = table(["Pair ID", "PET A", "PET B", "Confidence"], rows)
 
+    blocks = []
+    for p in pairs:
+        a, b = (pet_label(x, p) for x in p["pets"])
+        body = [
+            bullet("Combination logic", p.get("combination_logic")),
+            bullet("Survey anchor", p.get("survey_paper_anchor")),
+            "\n".join(bullet_list("Artefacts", p.get("artefacts"))) or None,
+            bullet("Advantage", p.get("advantage")),
+            bullet("Shortcoming", p.get("shortcoming")),
+            bullet("First documented", p.get("first_documented")),
+            bullet("Evidence last checked", p.get("evidence_last_updated")),
+            "\n".join(ref_list("References", p.get("references"))) or None,
+        ]
+        blocks.append(details(f"<code>{p['id']}</code> — {a} + {b}", body))
+
+    return idx + "\n\n" + "\n\n".join(blocks)
+
+
+# ─── T3 — Stacks ────────────────────────────────────────────────────────────
 
 def gen_t3(stacks: list[dict], pairs_by_id: dict[str, dict]) -> str:
     rows = []
     for s in stacks:
-        base = pairs_by_id[s["base_pair"]]
-        base_pets = [pet_label(x, base) for x in base["pets"]]
-        base_label = f"`{s['base_pair']}` ({' + '.join(base_pets)})"
-        rows.append([
-            f"`{s['id']}`", base_label, f"`{s['added_layer']}`",
-            " + ".join(s["full_stack"]),
-            truncate_chars(s["survey_paper_anchor"]),
-            short_prose(s["use_case"]),
-            short_prose(s["assurance_narrative"]),
-        ])
-    return table(rows)
+        rows.append([f"`{s['id']}`", " + ".join(s["full_stack"]), s["confidence"]])
+    idx = table(["Stack ID", "Full Stack", "Confidence"], rows)
 
+    blocks = []
+    for s in stacks:
+        base = pairs_by_id[s["base_pair"]]
+        base_pets = " + ".join(pet_label(x, base) for x in base["pets"])
+        body = [
+            bullet("Base pair", f"`{s['base_pair']}` ({base_pets})"),
+            bullet("Added layer", f"`{s['added_layer']}`"),
+            bullet("Rationale", s.get("rationale")),
+            bullet("Use case", s.get("use_case")),
+            bullet("Assurance narrative", s.get("assurance_narrative")),
+            "\n".join(bullet_list("Key artefacts", s.get("key_artefacts"))) or None,
+            bullet("Shortcoming", s.get("shortcoming")),
+            bullet("First documented", s.get("first_documented")),
+            bullet("Evidence last checked", s.get("evidence_last_updated")),
+            "\n".join(ref_list("References", s.get("references"))) or None,
+        ]
+        blocks.append(details(f"<code>{s['id']}</code> — {' + '.join(s['full_stack'])}", body))
+
+    return idx + "\n\n" + "\n\n".join(blocks)
+
+
+# ─── T4 — Sectors ───────────────────────────────────────────────────────────
 
 SECTOR_LABELS = {
-    "public_sector": "Public sector / official statistics",
+    "public_sector": "Public sector / official statistics / governed research",
     "healthcare": "Healthcare / biomedical research",
-    "finance": "Finance / fraud analytics",
-    "technology": "Technology / consumer AI",
-    "web3": "Web3 / verifiable infrastructure",
+    "finance": "Finance / fraud / inter-organisational analytics",
+    "technology": "Technology platforms / consumer AI / large-scale telemetry",
+    "web3": "Web3 / verifiable infrastructure / credential ecosystems",
 }
 
 
 def gen_t4(sectors: list[dict], pairs_by_id: dict[str, dict], stacks_by_id: dict[str, dict]) -> str:
     rows = []
     for s in sectors:
-        stacks_col = []
-        for ref in s["primary_stacks"]:
-            rid = ref["ref"]
-            stacks_col.append(f"`{rid}`")
+        stacks_col = backticks([ref["ref"] for ref in s["primary_stacks"]])
         label = SECTOR_LABELS.get(s["id"], s["id"])
-        rows.append([
-            f"**{label}**",
-            ", ".join(stacks_col),
-            short_prose(s["assurance_posture"]),
-            truncate_chars(s["dominant_anchor"]),
-            short_prose(s["maturity_notes"]),
-            short_prose(s["blocker"]),
-        ])
-    return table(rows)
+        rows.append([f"**{label}**", stacks_col, f"Stage {s.get('maturity_stage', '—')}"])
+    idx = table(["Sector", "Primary stacks", "Maturity"], rows)
+
+    blocks = []
+    for s in sectors:
+        label = SECTOR_LABELS.get(s["id"], s["id"])
+        ic = s.get("idiosyncratic_constraints", {}) or {}
+        body = [
+            bullet("Typical problem", s.get("typical_problem")),
+            "\n".join(bullet_list("Primary exposure problems", [f"`{e}`" for e in s.get("primary_exposure_problems", [])])) or None,
+            bullet("Assurance posture", s.get("assurance_posture")),
+            bullet("Dominant anchor", s.get("dominant_anchor")),
+            bullet("Maturity notes", s.get("maturity_notes")),
+            bullet("Blocker", s.get("blocker")),
+            "\n".join(bullet_list("Key examples", s.get("key_examples"))) or None,
+            "\n".join(bullet_list("Legal instruments", ic.get("legal_instruments"))) or None,
+            "\n".join(bullet_list("Regulatory expectations", ic.get("regulatory_expectations"))) or None,
+            "\n".join(bullet_list("Institutional frameworks", ic.get("institutional_frameworks"))) or None,
+            bullet("What this implies for PETs", ic.get("what_this_implies_for_pets")),
+        ]
+        blocks.append(details(f"{label}", body))
+
+    return idx + "\n\n" + "\n\n".join(blocks)
 
 
 def replace_block(content: str, tag: str, body: str) -> str:
